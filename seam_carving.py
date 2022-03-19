@@ -14,7 +14,34 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
                                     the basic implementation is used.
     :return: A dictionary with three elements, {'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3},
             where img1 is the resized image and img2/img3 are the visualization images
-            (where the chosen seams are colored red and black for vertical and horizontal seams, respecitvely).
+            (where the chosen seams are colored red and black for vertical and horizontal seams, respectively).
     """
     raise NotImplementedError('You need to implement this!')
     # TODO: return { 'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3}
+
+
+def resize_with_basic_implementation(image: NDArray, out_height: int, out_width: int) -> Dict[str, NDArray]:
+    """
+
+    :param image: ِnp.array which represents an image.
+    :param out_height: the resized image height
+    :param out_width: the resized image width
+    :return: A dictionary with three elements, {'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3},
+            where img1 is the resized image and img2/img3 are the visualization images
+            (where the chosen seams are colored red and black for vertical and horizontal seams, respectively)
+    """
+
+
+def resize_with_forward_implementation(image: NDArray, out_height: int, out_width: int) -> Dict[str, NDArray]:
+    """
+
+    :param image: ِnp.array which represents an image.
+    :param out_height: the resized image height
+    :param out_width: the resized image width
+    :return: A dictionary with three elements, {'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3},
+            where img1 is the resized image and img2/img3 are the visualization images
+            (where the chosen seams are colored red and black for vertical and horizontal seams, respectively)
+    """
+
+
+
