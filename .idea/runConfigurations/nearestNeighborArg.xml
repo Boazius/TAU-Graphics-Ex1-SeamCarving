@@ -12,7 +12,7 @@
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
-    <option name="PARAMETERS" value="--image_path &quot;imagesInput/tower.png&quot; --output_dir &quot;imagesOutput/&quot; --height 1000 --width 1500 --resize_method &quot;nearest_neighbor&quot; --out_prefix &quot;my_prefix&quot;" />
+    <option name="PARAMETERS" value="--image_path &quot;imagesInput/tower.png&quot; --output_dir &quot;imagesOutput/&quot; --height 957 --width 968 --resize_method &quot;nearest_neighbor&quot; --output_prefix &quot;my_prefix&quot;" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />

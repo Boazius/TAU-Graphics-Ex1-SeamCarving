@@ -33,7 +33,8 @@ def get_args():
     parser.add_argument('--use_forward_implementation', action='store_true',
                         help='If set and seam_carving is used as a resizing method, then the forward-looking '
                              'implementation is used.')
-    parser.add_argument('--out_prefix', nargs=1, type=str, help='Output filename prefix.', default='out')
+    # default out prefix is img
+    parser.add_argument('--output_prefix', type=str, help='Output filename prefix.', default='img')
     args = parser.parse_args()
     return args
 
@@ -42,40 +43,34 @@ def main(args):
     """
     The program main function.
     :param args: the command-line input arguments.
-
-    Boaz: example that worked for me: --image_path "imagesInput/tower.png" --output_dir "imagesOutput/" --height 1000
-    --width 1500 --resize_method "nearest_neighbor" --out_prefix "my_prefix"
     """
-
-    # --output_prefix (str) – an optional string which will be used as a prefix to the
-    # output files. If set, the output files names will start with the given prefix.
-    # if not(args.output_prefix == "")
-
-    # For seam carving, we will output two images, the resized image, and visualization of
-    # the chosen seems. So if --output_prefix is set to “my_prefix” then the output will
-    # be my_prefix_resized.png and my_prefix_horizontal _seams.png,
-    # my_prefix_vertical_seams.png. If the prefix is not set, then we will chose “img”
-    # as a default prefix.
+    # NEAREST NEIGHBOR: --image_path "imagesInput/tower.png" --output_dir "imagesOutput/" --height 900
+    # --width 900 --resize_method "nearest_neighbor" --output_prefix "my_prefix"
+    # SEAM CARVING: --image_path "imagesInput/tower.png" --output_dir "imagesOutput/" --height 900
+    # --width 900 --resize_method "seam_carving" --output_prefix "my_prefix"
+    # SEAM WITH FORWARD ENERGY: --image_path "imagesInput/tower.png" --output_dir "imagesOutput/" --height 900
+    # --width 900 --resize_method "seam_carving" --output_prefix "my_prefix" --use_forward_implementation
 
     image = utils.open_image(args.image_path)
+
+    # output is dictionary with:
+    # 0 Resized image with the specified output dimension
+    # if seam carving method is chosen, also output:
+    #   1 visualization images with the chosen seams colored in red for horizontal seams
+    #   2 visualization images with the chosen seams colored in black for vertical seams
+
     if args.resize_method == 'nearest_neighbor':
         output = nearest_neighbor.resize(image, args.height, args.width)
+        utils.save_images(output, args.output_dir, args.output_prefix)
+
     elif args.resize_method == 'seam_carving':
         output = seam_carving.resize(image, args.height, args.width,
                                      forward_implementation=args.use_forward_implementation)
+        # TODO output the resized image, the horizontal seams in red, the vertical seams in black:
+        utils.save_images(output, args.output_dir, args.output_prefix)
 
-        # TODO output seam visualization horizontal in RED
-        # TODO output seam visualization vertical in BLACK
     else:
         raise ValueError(f'Resize method {args.resize_method} is not supported')
-
-    #output the file
-    if args.out_prefix == "":
-        utils.save_images(output, args.out_dir)
-    else:
-        utils.save_images(output, args.out_dir, args.out_prefix)
-
-    # TODO: output image resized
 
 
 if __name__ == '__main__':
