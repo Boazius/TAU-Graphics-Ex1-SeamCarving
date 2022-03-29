@@ -5,7 +5,6 @@ import utils
 NDArray = Any
 
 
-
 def resize(image: NDArray, out_height: int, out_width: int, forward_implementation: bool) -> Dict[str, NDArray]:
     """
 
@@ -20,11 +19,29 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
             (where the chosen seams are colored red and black for vertical and horizontal seams, respectively).
     """
 
-    # compute the image gradient function E using get_gradients(image: NDArray):
-    gradientMatrix = utils.get_gradients(image)
-    # TODO: costMatrix = get_cost_matrix(image,forward_implementation)
+    # TODO convert image to grayscale
 
-    # TODO: figure out if we calculate cost matrix each time we delete/add a seam, or calculate once and use it for all seams
+    # width = image.getWidth();
+    # height = image.getHeight();
+    # widthDiff = out_width - width;
+    # heightDiff = out_height - height;
+
+    # if heightDiff > 0: # we need to enlarge height
+    # TODO add heightDiff seams
+
+    # if heightDiff < 0 # we need to shrink height
+    # TODO remove heightDiff seams
+
+    # if widthDiff > 0 # rotate and do the same
+    # TODO Rotate image, add widthDiff Seams
+
+    # if widthDiff <0 #rotate and do the same
+    # TODO Rotate image, remove widthDiff seams
+
+    # costMatrix = get_cost_matrix(image,forward_implementation)
+
+    # TODO: figure out if we calculate cost matrix each time we delete/add a seam, or calculate once and use it for
+    #  all seams
 
     # TODO:
     #  for 1 to k:
@@ -38,18 +55,22 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # TODO: return { 'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3}
 
-    # TODO when deleting seams, we must delete one by one: i.e, calculate cost matrix, delete the seam, and calculate
-    #  cost matrix again.... but when adding seams, we must find all k best seams using the same cost matrix, and only then
+    # TODO  when adding seams, we must find all k best seams using the same cost matrix, and only then
     #  duplicate them all once.
 
-    # TODO when calculating cost matrix, also create a matrix for backtracking the best seam:
-    #  when calculating a cost for a pixel, save in this new matrix if we used the (i-1,j-1) or (i-1,j) or (i,j-1) pixel for the cost calculatiion.
-    #  so when we go up the matrix, we use this new backtracking matrix to decide on the seam path.
 
     # TODO, also keep for each pixel its original (in the original image) (i,j) index in a different matrix.
 
 
-def get_cost_matrix(image: NDArray,forward_implementation: bool):
+
+def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k:int):
+    # TODO this function removes the best seam from the image, k times.
+    #  when deleting seams, we must delete one by one: i.e, calculate cost matrix, delete the seam, and calculate
+    #  cost matrix again....
+    pass
+
+
+def get_cost_matrix(image: NDArray, forward_implementation: bool):
     """
 
     :param image:
@@ -60,10 +81,24 @@ def get_cost_matrix(image: NDArray,forward_implementation: bool):
     # if the forward implementation is true, just add the C_L or C_V or C_R.
     # if its false M C_L and C_V and C_R is zero.
 
+    # TODO compute the image gradient function E using get_gradients(image: NDArray):
+    # gradientMatrix = utils.get_gradients(image)
+
     # TODO this function must also create the backtracking matrix
-    #  to figure out which pixel gave the current pixel its value.
+    #  to figure out which pixel gave the current pixel its valu
+    #
+    # TODO when calculating cost matrix, also create a matrix for backtracking the best seam: when calculating a cost
+    #  for a pixel, save in this new matrix if we used the (i-1,j-1) or (i-1,j) or (i,j-1) pixel for the cost
+    #  calculatiion. so when we go up the matrix, we use this new backtracking matrix to decide on the seam path.
     pass
 
-# TODO function to calculate optimal vertical seam using the cost matrix
 
-# TODO function to rotate image  90 degrees counter clockwise or clockwise- use numpy rotate
+def rotate_image_clockwise(image: NDArray, out_height: int, out_width: int):
+    pass
+    # TODO function to rotate image  90 degrees counter clockwise or clockwise- use numpy rotate
+
+
+def rotate_image_counter_clockwise(image: NDArray, out_height: int, out_width: int):
+    pass
+    # TODO function to rotate image  90 degrees counter clockwise or clockwise- use numpy rotate
+

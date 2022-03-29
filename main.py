@@ -56,8 +56,8 @@ def main(args):
     # output is dictionary with:
     # 0 Resized image with the specified output dimension
     # if seam carving method is chosen, also output:
-    #   1 visualization images with the chosen seams colored in red for horizontal seams
-    #   2 visualization images with the chosen seams colored in black for vertical seams
+    #   1: visualization image with the chosen seams colored in red for horizontal seams
+    #   2: visualization image with the chosen seams colored in black for vertical seams
 
     if args.resize_method == 'nearest_neighbor':
         output = nearest_neighbor.resize(image, args.height, args.width)
@@ -66,7 +66,7 @@ def main(args):
     elif args.resize_method == 'seam_carving':
         output = seam_carving.resize(image, args.height, args.width,
                                      forward_implementation=args.use_forward_implementation)
-        # TODO output the resized image, the horizontal seams in red, the vertical seams in black:
+        # output the resized image, the horizontal seams in red, the vertical seams in black:
         utils.save_images(output, args.output_dir, args.output_prefix)
 
     else:
