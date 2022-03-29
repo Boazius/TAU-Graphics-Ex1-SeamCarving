@@ -47,7 +47,7 @@ def get_gradients(image: NDArray):
     shift_y = np.roll(image, -1, axis=0)
     shift_y[-1, ...] = image[-2, ...]
     shift_x = np.roll(image, -1, axis=1)
-    shift_x[:, 0, ...] = image[:, -2, ...]
+    shift_x[:, -1, ...] = image[:, -2, ...]
     grads = np.sqrt(0.5 * (shift_x - image) ** 2 + 0.5 * (shift_y - image) ** 2)
     return grads
 
