@@ -1,6 +1,7 @@
 from typing import Dict, Any
 
 import utils
+import numpy as np
 
 NDArray = Any
 
@@ -19,36 +20,24 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
             (where the chosen seams are colored red and black for vertical and horizontal seams, respectively).
     """
 
-    # TODO convert image to grayscale
+    height, width = image.shape
+    widthDiff = out_width - width
+    heightDiff = out_height - height
 
-    # width = image.getWidth();
-    # height = image.getHeight();
-    # widthDiff = out_width - width;
-    # heightDiff = out_height - height;
+    if heightDiff > 0:
+        resized_image = remove_k_seams(image, out_height, out_width, forward_implementation, heightDiff)
+    if heightDiff < 0:
+        resized_image = remove_k_seams(image, out_height, out_width, forward_implementation, heightDiff)
+    if widthDiff > 0:
+        resized_image = rotate_image_counter_clockwise(
+            remove_k_seams(rotate_image_clockwise(image, height, out_width),
+                        out_height, out_width, forward_implementation, widthDiff))
+    if widthDiff <0:
+        resized_image = rotate_image_counter_clockwise(
+            remove_k_seams(rotate_image_clockwise(image, height, out_width), out_height, out_width,
+                        forward_implementation, widthDiff))
 
-    # if heightDiff > 0: # we need to enlarge height
-    # TODO add heightDiff seams
 
-    # if heightDiff < 0 # we need to shrink height
-    # TODO remove heightDiff seams
-
-    # if widthDiff > 0 # rotate and do the same
-    # TODO Rotate image, add widthDiff Seams
-
-    # if widthDiff <0 #rotate and do the same
-    # TODO Rotate image, remove widthDiff seams
-
-    # costMatrix = get_cost_matrix(image,forward_implementation)
-
-    # TODO: figure out if we calculate cost matrix each time we delete/add a seam, or calculate once and use it for
-    #  all seams
-
-    # TODO:
-    #  for 1 to k:
-    #   Use dynamic programming to find the optimal vertical seam using the cost matrix
-    #   Find the actual seam by finding the smallest cost in the bottom row, then start going up on a path using the backtracking matrix
-    #   Remove the seam from the grayscale image - DO NOT create a new image (inefficient) , just mark them as removed somehow.
-    #   Store the order and pixels removed in each iteration - will be used for the red and black lines
 
     # To reduce image size by 𝑘 pixels, remove all chosen seams from the original image
     # To enlarge by 𝑘 pixels, duplicate all chosen seams from the original image.
@@ -61,14 +50,59 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # TODO, also keep for each pixel its original (in the original image) (i,j) index in a different matrix.
 
-
-
 def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k:int):
     # TODO this function removes the best seam from the image, k times.
     #  when deleting seams, we must delete one by one: i.e, calculate cost matrix, delete the seam, and calculate
     #  cost matrix again....
-    pass
+    r, c = image.shape
+    for i in range(k):  # use range if you don't want to use tqdm
+        img = carve_column(image)
+    return img
 
+
+def carve_column(image: NDArray, forward_implementation:bool):
+    r, c = image.shape
+    gray_image = utils.to_grayscale(image)
+    M, backtrack = minimum_seam(gray_image, forward_implementation)
+
+    # Create a (r, c) matrix filled with the value True
+    # We'll be removing all pixels from the image which
+    # have False later
+    mask = np.ones((r, c), dtype=np.bool)
+
+    # Find the position of the smallest element in the
+    # last row of M
+    j = np.argmin(M[-1])
+
+    for i in reversed(range(r)):
+        # Mark the pixels for deletion
+        mask[i, j] = False
+        j = backtrack[i, j]
+    # Delete all the pixels marked False in the mask,
+    # and resize it to the new image dimensions
+    img = image[mask]
+    return img
+
+#image in gray scale
+def minimum_seam(image: NDArray, forward_implementation: bool):
+    r, c = image.shape
+    cost_matrix = get_cost_matrix(image, forward_implementation)
+    M = cost_matrix.copy()
+    backtrack = np.zeros_like(M, dtype=np.int)
+
+    for i in range(1, r):
+        for j in range(0, c):
+            # Handle the left edge of the image, to ensure we don't index -1
+            if j == 0:
+                index = np.argmin(M[i - 1, j:j + 2])
+                backtrack[i, j] = index + j
+                min_energy = M[i - 1, index + j]
+            else:
+                index = np.argmin(M[i - 1, j - 1:j + 2])
+                backtrack[i, j] = index + j - 1
+                min_energy = M[i - 1, index + j - 1]
+            M[i, j] += min_energy
+    return M, backtrack
 
 def get_cost_matrix(image: NDArray, forward_implementation: bool):
     """
@@ -77,12 +111,19 @@ def get_cost_matrix(image: NDArray, forward_implementation: bool):
     :param forward_implementation: the calculation is different depending on the implementation
     :return: an array
     """
+    gradientMatrix = utils.get_gradients(image)
 
+    if forward_implementation :
+        i = 0
+        #add cl / cv / cr
+    else :
+        cl = 0
+        cv = 0
+        cr = 0
     # if the forward implementation is true, just add the C_L or C_V or C_R.
     # if its false M C_L and C_V and C_R is zero.
 
-    # TODO compute the image gradient function E using get_gradients(image: NDArray):
-    # gradientMatrix = utils.get_gradients(image)
+
 
     # TODO this function must also create the backtracking matrix
     #  to figure out which pixel gave the current pixel its valu
@@ -90,15 +131,14 @@ def get_cost_matrix(image: NDArray, forward_implementation: bool):
     # TODO when calculating cost matrix, also create a matrix for backtracking the best seam: when calculating a cost
     #  for a pixel, save in this new matrix if we used the (i-1,j-1) or (i-1,j) or (i,j-1) pixel for the cost
     #  calculatiion. so when we go up the matrix, we use this new backtracking matrix to decide on the seam path.
-    pass
+    return 0
 
 
 def rotate_image_clockwise(image: NDArray, out_height: int, out_width: int):
-    pass
+    return np.rot90(image,-1,(0,1))
     # TODO function to rotate image  90 degrees counter clockwise or clockwise- use numpy rotate
 
 
 def rotate_image_counter_clockwise(image: NDArray, out_height: int, out_width: int):
-    pass
-    # TODO function to rotate image  90 degrees counter clockwise or clockwise- use numpy rotate
+    return np.rot90(image, 3, (0,1))
 
