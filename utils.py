@@ -41,7 +41,7 @@ def get_gradients(image: NDArray):
     :param image: The input RGB image.
     :return: A grayscale [0., 255.0] image which represents the image gradients.
     """
-    # Convert image to grayscale first!
+    # Convert image to grayscale first if needed!
     if image.ndim == 3:
         image = to_grayscale(image)
     shift_y = np.roll(image, -1, axis=0)

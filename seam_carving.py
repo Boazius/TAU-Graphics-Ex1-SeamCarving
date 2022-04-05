@@ -2,6 +2,7 @@ from typing import Dict, Any
 
 import utils
 import numpy as np
+import utils
 
 NDArray = Any
 
@@ -21,32 +22,33 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
     """
 
     # get width and height, and count how many seams to add/remove horizontally and vertically
-    height, width = image.shape
+    height, width, _ = image.shape
     widthDiff = out_width - width
     heightDiff = out_height - height
 
     # initialize useful matrices - MAYBE MAKE THIS GLOBAL?
 
-    # TODO: saves the image converted to grayscale, WILL BE SHRANK AND ENLARGED
-    # grayscaleMat
-    # TODO: save for each cell its original row and column, WILL BE SHRANK AND ENLARGED
-    # originalColMat
-    # originalRowMat
+    # saves the image converted to grayscale, WILL BE SHRANK AND ENLARGED
+    grayscaleMat = utils.to_grayscale(image)
 
-    # TODO: every cell will be 1 or 0, coloured in RED or not.
+    # TODO: save for each cell its original row and column, WILL BE SHRANK AND ENLARGED
+    originalRowMat, originalColMat = np.indices((height, width))
+
+    # TODO: every cell will be TRUE or FALSE, coloured in RED or not.
     #  this will be in original height and width:
-    # outputVerticalSeamMat
-    # TODO: every cell will be 1 or 0, coloured in Black or not.
+    outputVerticalSeamMat = np.zeros_like(grayscaleMat, dtype=bool)
+    # TODO: every cell will be TRUE or FALSE, coloured in Black or not.
     #  this will be in new shrunk/enlarged width (after removing/adding vertical seams),
     #  but in original height (before adding/removing horizontal seams).
-    # outputHorizontalSeamMat
+    outputHorizontalSeamMat = np.zeros((height, out_width), dtype=bool)
 
-    # TODO: cost matrix. WILL BE SHRANK AND ENLARGED. float value here.
-    # currCostMatrix
     # TODO: backtracking matrix. for every cell, the value is either 1 2 or 3:
     #  1 for upper left cell, 2 for upper cell, 3 for upper right cell
     #  denotes the cell that gave the current cell its value in the cost matrix.
-    # currBackTrackingMatrix
+    currBackTrackingMat = np.zeros_like(grayscaleMat, dtype=int)
+
+    # TODO: cost matrix. WILL BE SHRANK AND ENLARGED. float value here.
+    currCostMat = get_cost_matrix(grayscaleMat, currBackTrackingMat, forward_implementation)
 
     # add or remove k seams horizontally
     if heightDiff > 0:
@@ -89,6 +91,7 @@ def add_k_seams(image: NDArray, out_height: int, out_width: int, forward_impleme
 
 def carve_column(image: NDArray, forward_implementation: bool):
     r, c = image.shape
+    # TODO: will not do grayscale here, we only need to do this once, not for every seam
     gray_image = utils.to_grayscale(image)
     M, backtrack = minimum_seam(gray_image, forward_implementation)
 
@@ -133,32 +136,56 @@ def minimum_seam(image: NDArray, forward_implementation: bool):
     return M, backtrack
 
 
-def get_cost_matrix(image: NDArray, forward_implementation: bool):
+def get_cost_matrix(grayScaleMat: NDArray, currBackTrackingMat: NDArray, forward_implementation: bool):
     """
 
-    :param image:
+    :param grayScaleMat: a matrix of the image, in grayscale.
+    :param currBackTrackingMat: for every cell, the value is either 1 2 or 3:
+            1 for upper left cell, 2 for upper cell, 3 for upper right cell
+            denotes the cell that gave the current cell its value in the cost matrix.
     :param forward_implementation: the calculation is different depending on the implementation
-    :return: an array
+    :return: the completed cost matrix
     """
-    gradientMatrix = utils.get_gradients(image)
+    # get E(i,j).
+    gradientMatrix = utils.get_gradients(grayScaleMat)
+    height, width = grayScaleMat.shape
 
+    # TODO change this to empty_like for faster performance
+    costMatrix = np.zeros_like(grayScaleMat)
+
+    # first row is just E(0,j)
+    np.copyto(costMatrix[0], grayScaleMat[0])
+
+    # calculate forward energy if needed (or just zeroes)
     if forward_implementation:
-        i = 0
-        # add cl / cv / cr
+        # create three forward energy matrixes for cl, cv, and cr
+        forwardCL, forwardCV, forwardCR = get_forward_energy_matrix(grayScaleMat, gradientMatrix)
     else:
-        cl = 0
-        cv = 0
-        cr = 0
-    # if the forward implementation is true, just add the C_L or C_V or C_R.
-    # if its false M C_L and C_V and C_R is zero.
+        # just zeroes
+        forwardCR = forwardCV = forwardCL = np.zeros_like(grayScaleMat)
+
+    #  if j=0 (1st col) - ignore M[i-1,j-1] - make it INT_MAX and cl = 255
+    #  if j=width (last col) - ignore M[i-1,j+1] - make it INT_MAX and cr = 255
+
+    # TODO: find min(M[i-1,j-1]+cl(i,j), M[i-1,j]+cv(i,j), M[i-1,j+1]+cr(i,j))
 
     # TODO this function must also create the backtracking matrix
     #  to figure out which pixel gave the current pixel its valu
     #
     # TODO when calculating cost matrix, also create a matrix for backtracking the best seam: when calculating a cost
     #  for a pixel, save in this new matrix if we used the (i-1,j-1) or (i-1,j) or (i,j-1) pixel for the cost
-    #  calculatiion. so when we go up the matrix, we use this new backtracking matrix to decide on the seam path.
+    #  calculations. so when we go up the matrix, we use this new backtracking matrix to decide on the seam path.
     return 0
+
+
+# this function calculates Cv, Cr, and Cl for a given grayscale image, and its gradient matrix
+def get_forward_energy_matrix(grayScaleMat: NDArray, gradientMatrix: NDArray) -> (NDArray, NDArray, NDArray):
+
+    # start from the second row (row 1).
+    # first calculate Cv because it has a common addend
+
+
+    pass
 
 
 def rotate_image_clockwise(image: NDArray, out_height: int, out_width: int):
