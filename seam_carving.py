@@ -159,7 +159,7 @@ def get_cost_matrix(grayScaleMat: NDArray, currBackTrackingMat: NDArray, forward
     # calculate forward energy if needed (or just zeroes)
     if forward_implementation:
         # create three forward energy matrixes for cl, cv, and cr
-        forwardCL, forwardCV, forwardCR = get_forward_energy_matrix(grayScaleMat, gradientMatrix)
+        forwardCL, forwardCV, forwardCR = get_forward_energy_matrix(grayScaleMat, height, width)
     else:
         # just zeroes
         forwardCR = forwardCV = forwardCL = np.zeros_like(grayScaleMat)
@@ -179,19 +179,41 @@ def get_cost_matrix(grayScaleMat: NDArray, currBackTrackingMat: NDArray, forward
 
 
 # this function calculates Cv, Cr, and Cl for a given grayscale image, and its gradient matrix
-def get_forward_energy_matrix(grayScaleMat: NDArray, gradientMatrix: NDArray) -> (NDArray, NDArray, NDArray):
+def get_forward_energy_matrix(grayScaleMat: NDArray, height, width) -> \
+        (NDArray, NDArray, NDArray):
+    forwardCL = np.zeros_like(grayScaleMat)
+    forwardCV = np.zeros_like(grayScaleMat)
+    forwardCR = np.zeros_like(grayScaleMat)
 
-    # start from the second row (row 1).
-    # first calculate Cv because it has a common addend
+    # calculate cv,cr,and cl using np.add, np.roll, np.subtract, np.abs
+    tmpRoll = np.roll(grayScaleMat)
+    # calculate left and right edges
+    # CR = absolute ( I(i,1) - I(i-1,0) )
+    np.copyto(forwardCR[:, 0], grayScaleMat[:, 1])
+    np.subtract(forwardCR[:, 0], np.roll(grayScaleMat[:, 0], axis=0, shift=1), out=forwardCR[:, 0])
+    np.absolute(forwardCR[:, 0], out=forwardCR[:, 0])
+
+    # CL = absolute ( I(i-1,width) - I(i,width-1) )
+    np.copyto(forwardCL[:, width-1], grayScaleMat[:, width-2])
+    np.subtract(forwardCL[:, width-1], np.roll(grayScaleMat[:, width-1], axis=0, shift=1), out=forwardCL[:, width - 1])
+    np.absolute(forwardCL[:, width-1], out=forwardCL[:, width-1])
+
+    # add 255 to CL,CV,CR on the edges.
+    forwardCL[:, width - 1] += 255
+    forwardCV[:, width - 1] += 255
+    forwardCV[:, 0] += 255
+    forwardCR[:, 0] += 255
+
+    return forwardCL, forwardCV, forwardCR
 
 
-    pass
-
-
+# function to rotate image 90 degrees clockwise
+# TODO: handle the grayscale case and the image RGB case.
 def rotate_image_clockwise(image: NDArray, out_height: int, out_width: int):
     return np.rot90(image, -1, (0, 1))
-    # TODO function to rotate image  90 degrees counter clockwise or clockwise- use numpy rotate
 
 
+# function to rotate image 90 degrees counter clockwise
+# TODO: handle the grayscale case and the image RGB case.
 def rotate_image_counter_clockwise(image: NDArray, out_height: int, out_width: int):
     return np.rot90(image, 3, (0, 1))
