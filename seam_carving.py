@@ -31,25 +31,24 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
     # saves the image converted to grayscale, WILL BE SHRANK AND ENLARGED
     grayscaleMat = utils.to_grayscale(image)
 
-    # TODO: save for each cell its original row and column, WILL BE SHRANK AND ENLARGED
+    # save for each cell its original row and column, WILL BE SHRANK AND ENLARGED
     originalRowMat, originalColMat = np.indices((height, width))
 
     # TODO: every cell will be TRUE or FALSE, coloured in RED or not.
     #  this will be in original height and width:
-    outputVerticalSeamMat = np.zeros_like(grayscaleMat, dtype=bool)
+    VerticalSeamMatMask = np.zeros_like(grayscaleMat, dtype=bool)
     # TODO: every cell will be TRUE or FALSE, coloured in Black or not.
     #  this will be in new shrunk/enlarged width (after removing/adding vertical seams),
     #  but in original height (before adding/removing horizontal seams).
-    outputHorizontalSeamMat = np.zeros((height, out_width), dtype=bool)
+    HorizontalSeamMatMask = np.zeros((height, out_width), dtype=bool)
 
-    # TODO: backtracking matrix. for every cell, the value is either 1 2 or 3:
-    #  1 for upper left cell, 2 for upper cell, 3 for upper right cell
-    #  denotes the cell that gave the current cell its value in the cost matrix.
-    currBackTrackingMat = np.zeros_like(grayscaleMat, dtype=int)
+    # backtracking matrix. for every cell, the value is either 0 1 or 2:
+    # 0 for upper left cell, 1 for upper cell, 2 for upper right cell
+    # denotes the cell that gave the current cell its value in the cost matrix.
+    costMat, backTrackingMat = getCostMatrix(grayscaleMat, forward_implementation)
 
-    # TODO: cost matrix. WILL BE SHRANK AND ENLARGED. float value here.
-    currCostMat = get_cost_matrix(grayscaleMat, currBackTrackingMat, forward_implementation)
-
+    # TODO: here, copy grayscaleMat, find k seams and delete them, marking on outputVerticalSeamMat.
+    #   if adding instead of removing - using outputVerticalSeamMat duplicate the pixels marked using np.insert.
     # add or remove k seams horizontally
     if heightDiff > 0:
         resized_image = add_k_seams(image, out_height, out_width, forward_implementation, heightDiff)
@@ -117,7 +116,7 @@ def carve_column(image: NDArray, forward_implementation: bool):
 # image in gray scale
 def minimum_seam(image: NDArray, forward_implementation: bool):
     r, c = image.shape
-    cost_matrix = get_cost_matrix(image, forward_implementation)
+    cost_matrix = getCostMatrix(image, )
     M = cost_matrix.copy()
     backtrack = np.zeros_like(M, dtype=np.int)
 
@@ -136,57 +135,87 @@ def minimum_seam(image: NDArray, forward_implementation: bool):
     return M, backtrack
 
 
-def get_cost_matrix(grayScaleMat: NDArray, currBackTrackingMat: NDArray, forward_implementation: bool):
+def getCostMatrix(grayscaleMat: NDArray, forward_implementation: bool) -> (NDArray, NDArray):
     """
 
-    :param grayScaleMat: a matrix of the image, in grayscale.
-    :param currBackTrackingMat: for every cell, the value is either 1 2 or 3:
-            1 for upper left cell, 2 for upper cell, 3 for upper right cell
-            denotes the cell that gave the current cell its value in the cost matrix.
+    :param grayscaleMat: a matrix of the image, in grayscale.
     :param forward_implementation: the calculation is different depending on the implementation
-    :return: the completed cost matrix
+    :return: the completed cost matrix, and the backtracking matrix
+            backTrackingMat: for every cell, the value is either 0 1 or 2:
+            1 for upper left cell, 2 for upper cell, 3 for upper right cell
+            denotes the cell that gave the current cell its value (in the cost matrix.
     """
     # get E(i,j).
-    gradientMatrix = utils.get_gradients(grayScaleMat)
-    height, width = grayScaleMat.shape
-
-    # TODO change this to empty_like for faster performance
-    costMatrix = np.zeros_like(grayScaleMat)
-
-    # first row is just E(0,j)
-    np.copyto(costMatrix[0], grayScaleMat[0])
+    height, width = grayscaleMat.shape
 
     # calculate forward energy if needed (or just zeroes)
     if forward_implementation:
-        # create three forward energy matrixes for cl, cv, and cr
-        forwardCL, forwardCV, forwardCR = get_forward_energy_matrix(grayScaleMat, height, width)
+        # create three forward energy matrices for cl, cv, and cr
+        forwardCL, forwardCV, forwardCR = get_forward_energy_matrix(grayscaleMat, height, width)
     else:
         # just zeroes
-        forwardCR = forwardCV = forwardCL = np.zeros_like(grayScaleMat)
+        forwardCR = forwardCV = forwardCL = np.zeros_like(grayscaleMat)
 
-    #  if j=0 (1st col) - ignore M[i-1,j-1] - make it INT_MAX and cl = 255
-    #  if j=width (last col) - ignore M[i-1,j+1] - make it INT_MAX and cr = 255
+    # find cost matrix using gradients and forward energy by going row by row and getting minimums from prev row
+    gradientMat = utils.get_gradients(grayscaleMat)
+    costMatrix = np.copy(gradientMat)
+    backTrackingMat = np.zeros_like(grayscaleMat, dtype=int)
 
-    # TODO: find min(M[i-1,j-1]+cl(i,j), M[i-1,j]+cv(i,j), M[i-1,j+1]+cr(i,j))
+    # for every row calculate cost matrix using the previous row.
+    for i in range(1, height):
+        # M[i-1,j-1]
+        costRollUpLeft = np.roll(costMatrix[i - 1], shift=1)
+        # M[i-1,j] is costMatrix[i - 1]
+        # M[i-1,j+1]
+        costRollUpRight = np.roll(costMatrix[i - 1], shift=-1)
+        # arrange the candidates in a list
+        possibleValueForCostMatrixRow = [np.add(costRollUpLeft, forwardCL[i]), np.add(costMatrix[i - 1], forwardCV[i]),
+                                         np.add(costRollUpRight, forwardCR[i])]
+        # find the minimum index (0 1 or 2 meaning left, up, or right ), and copy the value into costMatrix
+        backTrackingMat[i] = np.argmin(possibleValueForCostMatrixRow, axis=0)
+        # TODO: use the indexes from currMinIdx to somehow select the correct values from three different arrays,
+        #  faster performance instead of doing minimum twice.
+        np.add(costMatrix[i], np.min(possibleValueForCostMatrixRow, axis=0), out=costMatrix[i])
 
-    # TODO this function must also create the backtracking matrix
-    #  to figure out which pixel gave the current pixel its valu
-    #
-    # TODO when calculating cost matrix, also create a matrix for backtracking the best seam: when calculating a cost
-    #  for a pixel, save in this new matrix if we used the (i-1,j-1) or (i-1,j) or (i,j-1) pixel for the cost
-    #  calculations. so when we go up the matrix, we use this new backtracking matrix to decide on the seam path.
-    return 0
+        # edge cases - left edge j=0, right edge j = width-1
+        possibleValLeftEdge = [costMatrix[i - 1, 0] + forwardCV[i, 0], costRollUpRight[0] + forwardCR[i, 0]]
+        backTrackingMat[i, 0] = np.argmin(possibleValLeftEdge) + 1  # because it cant be 0 (left)
+        costMatrix[i, 0] = gradientMat[i, 0] + np.min(possibleValLeftEdge)
+        possibleValRightEdge = [costMatrix[i - 1, width - 1] + forwardCV[i, width - 1],
+                                costRollUpRight[width - 1] + forwardCR[i, width - 1]]
+        backTrackingMat[i, width - 1] = np.argmin(possibleValRightEdge)
+        costMatrix[i, width - 1] = gradientMat[i, width - 1] + np.min(possibleValRightEdge)
+
+    return costMatrix, backTrackingMat
 
 
-# this function calculates Cv, Cr, and Cl for a given grayscale image, and its gradient matrix
+# this function calculates Cv, Cr, and Cl for a given grayscale image
 def get_forward_energy_matrix(grayScaleMat: NDArray, height, width) -> \
         (NDArray, NDArray, NDArray):
-    forwardCL = np.zeros_like(grayScaleMat)
-    forwardCV = np.zeros_like(grayScaleMat)
-    forwardCR = np.zeros_like(grayScaleMat)
+    forwardCV = np.empty_like(grayScaleMat)
+    forwardCL = np.empty_like(grayScaleMat)
+    forwardCR = np.empty_like(grayScaleMat)
 
-    # calculate cv,cr,and cl using np.add, np.roll, np.subtract, np.abs
-    tmpRoll = np.roll(grayScaleMat)
+    # TODO calculate cv,cr,and cl using np.add, np.roll, np.subtract, np.abs
+    matRollJPlus1 = np.roll(grayScaleMat, axis=1, shift=-1)  # take j+1
+    matRollJMinus1 = np.roll(grayScaleMat, axis=1, shift=1)  # take j-1
+    matRollIMinus1 = np.roll(grayScaleMat, axis=0, shift=1)  # take i-1
+
+    # CV
+    np.copyto(forwardCV, matRollJPlus1)
+    np.subtract(forwardCV, matRollJMinus1, out=forwardCV)
+    np.absolute(forwardCV, out=forwardCV)
+    # CL
+    np.copyto(forwardCL, matRollIMinus1)
+    np.subtract(forwardCL, matRollJMinus1, out=forwardCL)
+    np.absolute(forwardCL, out=forwardCL)
+    np.add(forwardCL, forwardCV, out=forwardCL)
+    # CR
+    np.copyto(forwardCR, matRollIMinus1)
+    np.subtract(forwardCR, matRollJPlus1, out=forwardCR)
+    np.absolute(forwardCR, out=forwardCR)
+    np.add(forwardCR, forwardCV, out=forwardCR)
+
     # calculate left and right edges
     # CR = absolute ( I(i,1) - I(i-1,0) )
     np.copyto(forwardCR[:, 0], grayScaleMat[:, 1])
@@ -194,9 +223,10 @@ def get_forward_energy_matrix(grayScaleMat: NDArray, height, width) -> \
     np.absolute(forwardCR[:, 0], out=forwardCR[:, 0])
 
     # CL = absolute ( I(i-1,width) - I(i,width-1) )
-    np.copyto(forwardCL[:, width-1], grayScaleMat[:, width-2])
-    np.subtract(forwardCL[:, width-1], np.roll(grayScaleMat[:, width-1], axis=0, shift=1), out=forwardCL[:, width - 1])
-    np.absolute(forwardCL[:, width-1], out=forwardCL[:, width-1])
+    np.copyto(forwardCL[:, width - 1], grayScaleMat[:, width - 2])
+    np.subtract(forwardCL[:, width - 1], np.roll(grayScaleMat[:, width - 1], axis=0, shift=1),
+                out=forwardCL[:, width - 1])
+    np.absolute(forwardCL[:, width - 1], out=forwardCL[:, width - 1])
 
     # add 255 to CL,CV,CR on the edges.
     forwardCL[:, width - 1] += 255
