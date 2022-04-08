@@ -36,11 +36,11 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # TODO: every cell will be TRUE or FALSE, coloured in RED or not.
     #  this will be in original height and width:
-    VerticalSeamMatMask = np.zeros_like(grayscaleMat, dtype=bool)
+    VerticalSeamMatMask = np.ones_like(grayscaleMat, dtype=bool)
     # TODO: every cell will be TRUE or FALSE, coloured in Black or not.
     #  this will be in new shrunk/enlarged width (after removing/adding vertical seams),
     #  but in original height (before adding/removing horizontal seams).
-    HorizontalSeamMatMask = np.zeros((height, out_width), dtype=bool)
+    HorizontalSeamMatMask = np.ones((height, out_width), dtype=bool)
 
     # backtracking matrix. for every cell, the value is either 0 1 or 2:
     # 0 for upper left cell, 1 for upper cell, 2 for upper right cell
@@ -48,12 +48,12 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
     costMat, backTrackingMat = getCostMatrix(grayscaleMat, forward_implementation)
 
     # TODO: here, copy grayscaleMat, find k seams and delete them, marking on outputVerticalSeamMat.
-    #   if adding instead of removing - using outputVerticalSeamMat duplicate the pixels marked using np.insert.
+    #   if adding instead of removing - using VerticalSeamMatMask duplicate the pixels marked using np.insert/np.repeat
     # add or remove k seams horizontally
     if heightDiff > 0:
-        resized_image = add_k_seams(image, out_height, out_width, forward_implementation, heightDiff)
+        resized_image = add_k_seams(grayscaleMat, out_height, out_width, forward_implementation, heightDiff,VerticalSeamMatMask)
     if heightDiff < 0:
-        resized_image = remove_k_seams(image, out_height, out_width, forward_implementation, heightDiff)
+        resized_image = remove_k_seams(grayscaleMat, out_height, out_width, forward_implementation, heightDiff,VerticalSeamMatMask)
 
     # rotate the image, add/remove k seams horizontally, and rotate back
     if widthDiff > 0:
@@ -68,31 +68,36 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
     # TODO: return { 'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3}
 
 
-def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int):
+def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int,
+                   VerticalSeamMatMask):
     # TODO this function removes the best seam from the image, k times.
     #  when deleting seams, we must delete one by one: i.e, calculate cost matrix, delete the seam, and calculate
     #  cost matrix again....
     currHeight, currWidth = image.shape
     for i in range(k):  # use range if you don't want to use tqdm
-        img = carve_column(image)
+        img = carve_column(image, VerticalSeamMatMask)
+
+    # TODO: create new image using VerticalSeamMatMask
     return img
 
 
-def add_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int):
+def add_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int, VerticalSeamMatMask):
     # TODO this function duplicates the best seam from the image, k times.
     # TODO  when adding seams, we must find all k best seams using the same cost matrix, and only then
     #   #  duplicate them all once.
+
+    # TODO: use numpy.repeat
     r, c = image.shape
     for i in range(k):  # use range if you don't want to use tqdm
         img = carve_column(image)
     return img
 
 
-def carve_column(image: NDArray, forward_implementation: bool):
+def carve_column(image: NDArray, forward_implementation: bool, VerticalSeamMatMask):
     r, c = image.shape
     # TODO: will not do grayscale here, we only need to do this once, not for every seam
     gray_image = utils.to_grayscale(image)
-    M, backtrack = minimum_seam(gray_image, forward_implementation)
+    M, backtrack = getCostMatrix(gray_image, forward_implementation)
 
     # Create a (r, c) matrix filled with the value True
     # We'll be removing all pixels from the image which
@@ -106,33 +111,15 @@ def carve_column(image: NDArray, forward_implementation: bool):
     for i in reversed(range(r)):
         # Mark the pixels for deletion
         mask[i, j] = False
-        j = backtrack[i, j]
+        VerticalSeamMatMask[i, j] = False
+        j += backtrack[i, j] - 1
     # Delete all the pixels marked False in the mask,
     # and resize it to the new image dimensions
     img = image[mask]
+
+
+
     return img
-
-
-# image in gray scale
-def minimum_seam(image: NDArray, forward_implementation: bool):
-    r, c = image.shape
-    cost_matrix = getCostMatrix(image, )
-    M = cost_matrix.copy()
-    backtrack = np.zeros_like(M, dtype=np.int)
-
-    for i in range(1, r):
-        for j in range(0, c):
-            # Handle the left edge of the image, to ensure we don't index -1
-            if j == 0:
-                index = np.argmin(M[i - 1, j:j + 2])
-                backtrack[i, j] = index + j
-                min_energy = M[i - 1, index + j]
-            else:
-                index = np.argmin(M[i - 1, j - 1:j + 2])
-                backtrack[i, j] = index + j - 1
-                min_energy = M[i - 1, index + j - 1]
-            M[i, j] += min_energy
-    return M, backtrack
 
 
 def getCostMatrix(grayscaleMat: NDArray, forward_implementation: bool) -> (NDArray, NDArray):
@@ -173,7 +160,7 @@ def getCostMatrix(grayscaleMat: NDArray, forward_implementation: bool) -> (NDArr
                                          np.add(costRollUpRight, forwardCR[i])]
         # find the minimum index (0 1 or 2 meaning left, up, or right ), and copy the value into costMatrix
         backTrackingMat[i] = np.argmin(possibleValueForCostMatrixRow, axis=0)
-        # TODO: use the indexes from currMinIdx to somehow select the correct values from three different arrays,
+        # TODO: use the indexes from backTrackingMat to somehow select the correct values from three different arrays,
         #  faster performance instead of doing minimum twice.
         np.add(costMatrix[i], np.min(possibleValueForCostMatrixRow, axis=0), out=costMatrix[i])
 
