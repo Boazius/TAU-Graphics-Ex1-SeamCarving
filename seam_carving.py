@@ -47,26 +47,29 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
     # denotes the cell that gave the current cell its value in the cost matrix.
     costMat, backTrackingMat = getCostMatrix(grayscaleMat, forward_implementation)
 
+    #markSeams(grayscaleMat,verticalSeamMatMask,forward_implementation)
+    # image[verticalSeamMatMask]
+
     # TODO: here, copy grayscaleMat, find k seams and delete them, marking on outputVerticalSeamMat.
     #   if adding instead of removing - using VerticalSeamMatMask duplicate the pixels marked using np.insert/np.repeat
     # add or remove k seams horizontally
     if heightDiff > 0:
-        resized_image = add_k_seams(grayscaleMat, out_height, out_width, forward_implementation, heightDiff,VerticalSeamMatMask)
+        resized_image = add_k_seams(grayscaleMat, out_height, out_width, forward_implementation, heightDiff, VerticalSeamMatMask)
     if heightDiff < 0:
-        resized_image = remove_k_seams(grayscaleMat, out_height, out_width, forward_implementation, heightDiff,VerticalSeamMatMask)
+        resized_image = remove_k_seams(grayscaleMat, out_height, out_width, forward_implementation, heightDiff, VerticalSeamMatMask)
 
     # rotate the image, add/remove k seams horizontally, and rotate back
     if widthDiff > 0:
         resized_image = rotate_image_counter_clockwise(
             add_k_seams(rotate_image_clockwise(image, height, out_width),
-                        out_height, out_width, forward_implementation, widthDiff))
+                        out_height, out_width, forward_implementation, widthDiff, HorizontalSeamMatMask))
     if widthDiff < 0:
         resized_image = rotate_image_counter_clockwise(
             remove_k_seams(rotate_image_clockwise(image, height, out_width), out_height, out_width,
-                           forward_implementation, widthDiff))
+                           forward_implementation, widthDiff, HorizontalSeamMatMask))
 
     # TODO: return { 'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3}
-
+    return (resized_image, VerticalSeamMatMask, HorizontalSeamMatMask)
 
 def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int,
                    VerticalSeamMatMask):
@@ -74,8 +77,8 @@ def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_impl
     #  when deleting seams, we must delete one by one: i.e, calculate cost matrix, delete the seam, and calculate
     #  cost matrix again....
     currHeight, currWidth = image.shape
-    for i in range(k):  # use range if you don't want to use tqdm
-        img = carve_column(image, VerticalSeamMatMask)
+    for i in range(-k):  # use range if you don't want to use tqdm
+        img = carve_column(image,forward_implementation, VerticalSeamMatMask)
 
     # TODO: create new image using VerticalSeamMatMask
     return img
@@ -96,8 +99,7 @@ def add_k_seams(image: NDArray, out_height: int, out_width: int, forward_impleme
 def carve_column(image: NDArray, forward_implementation: bool, VerticalSeamMatMask):
     r, c = image.shape
     # TODO: will not do grayscale here, we only need to do this once, not for every seam
-    gray_image = utils.to_grayscale(image)
-    M, backtrack = getCostMatrix(gray_image, forward_implementation)
+    M, backtrack = getCostMatrix(image, forward_implementation)
 
     # Create a (r, c) matrix filled with the value True
     # We'll be removing all pixels from the image which
@@ -115,9 +117,7 @@ def carve_column(image: NDArray, forward_implementation: bool, VerticalSeamMatMa
         j += backtrack[i, j] - 1
     # Delete all the pixels marked False in the mask,
     # and resize it to the new image dimensions
-    img = image[mask]
-
-
+    img = np.reshape(image[mask], (r,c-1))
 
     return img
 
