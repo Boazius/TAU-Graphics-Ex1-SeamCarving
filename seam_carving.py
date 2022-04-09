@@ -7,6 +7,42 @@ import utils
 NDArray = Any
 
 
+def markSeams(grayImage, seamMatMask, forward_implementation, originalColMat, k):
+    """
+
+    :param grayImage:
+    :param seamMatMask:
+    :param forward_implementation:
+    :param originalColMat:
+    :param k:
+    :return: This function marks True and False on verticalSeamMatMask, where the seams are.
+    """
+    # delete and Mark k seams
+    for seamIdx in range(k):
+        # get cost matrix
+        r, c = grayImage.shape
+        # TODO: will not do grayscale here, we only need to do this once, not for every seam
+        costMatrix, backTrackMat = getCostMatrix(grayImage, forward_implementation)
+
+        # for deleting seam, mark ONLY the seam on the matrix with False.
+        mask = np.ones((r, c), dtype=np.bool)
+
+        # Find the position of the smallest element in the last row of M
+        j = np.argmin(costMatrix[-1])
+
+        for i in reversed(range(r)):
+            # Mark the pixels for deletion
+            mask[i, j] = False
+            j += backTrackMat[i, j] - 1
+        # TODO: mark the current seam on the seamMatMask, USE originalColMat to
+        seamMatMask[mask] = True
+        # Delete all the pixels marked False in the mask,
+        # and resize it to the new image dimensions
+        # img = np.reshape(image[mask], (r, c - 1))
+        # TODO: shrink grayImage according to mask.
+        grayImage = grayImage[mask]
+
+
 def resize(image: NDArray, out_height: int, out_width: int, forward_implementation: bool) -> Dict[str, NDArray]:
     """
 
@@ -34,42 +70,53 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
     # save for each cell its original row and column, WILL BE SHRANK AND ENLARGED
     originalRowMat, originalColMat = np.indices((height, width))
 
-    # TODO: every cell will be TRUE or FALSE, coloured in RED or not.
-    #  this will be in original height and width:
-    VerticalSeamMatMask = np.ones_like(grayscaleMat, dtype=bool)
-    # TODO: every cell will be TRUE or FALSE, coloured in Black or not.
-    #  this will be in new shrunk/enlarged width (after removing/adding vertical seams),
-    #  but in original height (before adding/removing horizontal seams).
-    HorizontalSeamMatMask = np.ones((height, out_width), dtype=bool)
+    # every cell will be TRUE or FALSE, coloured in RED or not this will be in original height and width:
+    verticalSeamMatMask = np.ones_like(grayscaleMat, dtype=bool)
+    # every cell will be TRUE or FALSE, coloured in Black or not, original height, chnaged Width
+    horizontalSeamMatMask = np.ones((height, out_width), dtype=bool)
 
-    # backtracking matrix. for every cell, the value is either 0 1 or 2:
-    # 0 for upper left cell, 1 for upper cell, 2 for upper right cell
-    # denotes the cell that gave the current cell its value in the cost matrix.
+    # backtracking matrix.
     costMat, backTrackingMat = getCostMatrix(grayscaleMat, forward_implementation)
 
-    #markSeams(grayscaleMat,verticalSeamMatMask,forward_implementation)
-    # image[verticalSeamMatMask]
+    # TODO Output dictionary will have resized image,red line vertical seams image , black line horizontal image
+    outDict = {}
+    outResizedImage = np.copy(image)
 
     # TODO: here, copy grayscaleMat, find k seams and delete them, marking on outputVerticalSeamMat.
     #   if adding instead of removing - using VerticalSeamMatMask duplicate the pixels marked using np.insert/np.repeat
     # add or remove k seams horizontally
+    if heightDiff != 0:
+        markSeams(grayscaleMat, verticalSeamMatMask, forward_implementation, originalColMat)
     if heightDiff > 0:
-        resized_image = add_k_seams(grayscaleMat, out_height, out_width, forward_implementation, heightDiff, VerticalSeamMatMask)
+        # TODO make a new image with red lines using verticalSeamMatMask, this will be in original height and width:
+        resized_image = add_k_seams(image, verticalSeamMatMask, -heightDiff)
     if heightDiff < 0:
-        resized_image = remove_k_seams(grayscaleMat, out_height, out_width, forward_implementation, heightDiff, VerticalSeamMatMask)
+        # TODO make a new image with red lines using verticalSeamMatMask, this will be in original height and width:
+        resized_image = remove_k_seams(image, verticalSeamMatMask, heightDiff)
 
-    # rotate the image, add/remove k seams horizontally, and rotate back
+    # TODO rotate the image, add/remove k seams horizontally, and rotate back
+    rotatedGrayScaleImage = rotate_image_counter_clockwise(grayscaleMat)
+    rotatedImage = rotate_image_counter_clockwise(image)
+    if widthDiff != 0:
+        markSeams(rotatedGrayScaleImage, horizontalSeamMatMask, forward_implementation, originalRowMat)
     if widthDiff > 0:
-        resized_image = rotate_image_counter_clockwise(
-            add_k_seams(rotate_image_clockwise(image, height, out_width),
-                        out_height, out_width, forward_implementation, widthDiff, HorizontalSeamMatMask))
+        # TODO make a new image with Black lines using horizontalSeamMatMask,
+        #  this will be in new shrunk/enlarged width (after removing/adding vertical seams),
+        #  but in original height (before adding/removing horizontal seams).
+        resized_image = add_k_seams(rotatedImage, horizontalSeamMatMask, -widthDiff)
+        # Rotate back
+        resized_image = rotate_image_clockwise(resized_image)
     if widthDiff < 0:
-        resized_image = rotate_image_counter_clockwise(
-            remove_k_seams(rotate_image_clockwise(image, height, out_width), out_height, out_width,
-                           forward_implementation, widthDiff, HorizontalSeamMatMask))
+        # TODO make a new image with Black lines using horizontalSeamMatMask,
+        #  this will be in new shrunk/enlarged width (after removing/adding vertical seams),
+        #  but in original height (before adding/removing horizontal seams).
+        resized_image = remove_k_seams(rotatedImage, horizontalSeamMatMask, -widthDiff)
+        # Rotate back
+        resized_image = rotate_image_clockwise(resized_image)
 
     # TODO: return { 'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3}
-    return (resized_image, VerticalSeamMatMask, HorizontalSeamMatMask)
+    return outDict
+
 
 def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int,
                    VerticalSeamMatMask):
@@ -78,13 +125,14 @@ def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_impl
     #  cost matrix again....
     currHeight, currWidth = image.shape
     for i in range(-k):  # use range if you don't want to use tqdm
-        img = carve_column(image,forward_implementation, VerticalSeamMatMask)
+        img = carve_column(image, forward_implementation, VerticalSeamMatMask)
 
     # TODO: create new image using VerticalSeamMatMask
     return img
 
 
-def add_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int, VerticalSeamMatMask):
+def add_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int,
+                VerticalSeamMatMask):
     # TODO this function duplicates the best seam from the image, k times.
     # TODO  when adding seams, we must find all k best seams using the same cost matrix, and only then
     #   #  duplicate them all once.
@@ -117,7 +165,7 @@ def carve_column(image: NDArray, forward_implementation: bool, VerticalSeamMatMa
         j += backtrack[i, j] - 1
     # Delete all the pixels marked False in the mask,
     # and resize it to the new image dimensions
-    img = np.reshape(image[mask], (r,c-1))
+    img = np.reshape(image[mask], (r, c - 1))
 
     return img
 
@@ -226,11 +274,11 @@ def get_forward_energy_matrix(grayScaleMat: NDArray, height, width) -> \
 
 # function to rotate image 90 degrees clockwise
 # TODO: handle the grayscale case and the image RGB case.
-def rotate_image_clockwise(image: NDArray, out_height: int, out_width: int):
+def rotate_image_clockwise(image: NDArray):
     return np.rot90(image, -1, (0, 1))
 
 
 # function to rotate image 90 degrees counter clockwise
 # TODO: handle the grayscale case and the image RGB case.
-def rotate_image_counter_clockwise(image: NDArray, out_height: int, out_width: int):
+def rotate_image_counter_clockwise(image: NDArray):
     return np.rot90(image, 3, (0, 1))
