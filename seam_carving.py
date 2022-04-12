@@ -1,46 +1,49 @@
 from typing import Dict, Any
 
-import utils
 import numpy as np
 import utils
 
 NDArray = Any
 
 
-def markSeams(grayImage, seamMatMask, forward_implementation, originalColMat, k):
+def markSeams(grayImage, seamMatMask, gradientMat, forward_implementation, originalColMat, k):
     """
-
-    :param grayImage:
-    :param seamMatMask:
-    :param forward_implementation:
-    :param originalColMat:
-    :param k:
+    :param gradientMat: E(i,j) for each cell. ReadOnly
+    :param grayImage: the image in grayscale. ReadOnly
+    :param seamMatMask: Write/Read
+    :param forward_implementation: boolean, cost matrix calculation method
+    :param originalColMat: for each cell saves which column it was before we shrunk it.
+    :param k: how many seams to make
     :return: This function marks True and False on verticalSeamMatMask, where the seams are.
     """
+    # make copies of the matrices to not modify them, because we don't know if enlarge/shrink
+    currGrayImage = np.copy(grayImage)
+    currGradientMat = np.copy(gradientMat)
+    currOriginalColMat = np.copy(originalColMat)
+
     # delete and Mark k seams
     for seamIdx in range(k):
         # get cost matrix
-        r, c = grayImage.shape
-        # TODO: will not do grayscale here, we only need to do this once, not for every seam
-        costMatrix, backTrackMat = getCostMatrix(grayImage, forward_implementation)
+        height, width = currGrayImage.shape
+        costMatrix, backTrackMat = getCostMatrix(currGrayImage, currGradientMat, forward_implementation)
 
         # for deleting seam, mark ONLY the seam on the matrix with False.
-        mask = np.ones((r, c), dtype=np.bool)
+        mask = np.ones((height, width), dtype=np.bool)
 
         # Find the position of the smallest element in the last row of M
         j = np.argmin(costMatrix[-1])
 
-        for i in reversed(range(r)):
+        for i in reversed(range(height)):
             # Mark the pixels for deletion
             mask[i, j] = False
+            seamMatMask[i, currOriginalColMat[i, j]] = False
             j += backTrackMat[i, j] - 1
-        # TODO: mark the current seam on the seamMatMask, USE originalColMat to
-        seamMatMask[mask] = True
-        # Delete all the pixels marked False in the mask,
-        # and resize it to the new image dimensions
-        # img = np.reshape(image[mask], (r, c - 1))
-        # TODO: shrink grayImage according to mask.
-        grayImage = grayImage[mask]
+
+        # TODO: shrink grayImage,gradientMat,originalColMat according to mask.
+        #  img = np.reshape(image[mask], (r, c - 1))
+        currGrayImage = np.reshape(currGrayImage[mask], (height, width - 1))
+        currGradientMat = np.reshape(currGradientMat[mask], (height, width - 1))
+        currOriginalColMat = np.reshape(currOriginalColMat[mask], (height, width - 1))
 
 
 def resize(image: NDArray, out_height: int, out_width: int, forward_implementation: bool) -> Dict[str, NDArray]:
@@ -66,113 +69,64 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # saves the image converted to grayscale, WILL BE SHRANK AND ENLARGED
     grayscaleMat = utils.to_grayscale(image)
+    gradientMat = utils.get_gradients(grayscaleMat)
 
-    # save for each cell its original row and column, WILL BE SHRANK AND ENLARGED
-    originalRowMat, originalColMat = np.indices((height, width))
+    # save for each cell its original row and column.
+    _, originalColMat = np.indices((height, width))
+    originalRowMat, _ = np.indices((height, out_width))
 
     # every cell will be TRUE or FALSE, coloured in RED or not this will be in original height and width:
     verticalSeamMatMask = np.ones_like(grayscaleMat, dtype=bool)
-    # every cell will be TRUE or FALSE, coloured in Black or not, original height, chnaged Width
+    # every cell will be TRUE or FALSE, coloured in Black or not, original height, changed Width
     horizontalSeamMatMask = np.ones((height, out_width), dtype=bool)
-
-    # backtracking matrix.
-    costMat, backTrackingMat = getCostMatrix(grayscaleMat, forward_implementation)
 
     # TODO Output dictionary will have resized image,red line vertical seams image , black line horizontal image
     outDict = {}
-    outResizedImage = np.copy(image)
+    # outResizedImage = np.copy(image)
+    # outImageWithVerticalSeams
+    # outImageWithHorizontalSeams
 
-    # TODO: here, copy grayscaleMat, find k seams and delete them, marking on outputVerticalSeamMat.
-    #   if adding instead of removing - using VerticalSeamMatMask duplicate the pixels marked using np.insert/np.repeat
-    # add or remove k seams horizontally
+    # Mark seams will update verticalSeamMatMask, will not change grayscaleMat, gradientMat, originalColMat
     if heightDiff != 0:
-        markSeams(grayscaleMat, verticalSeamMatMask, forward_implementation, originalColMat)
-    if heightDiff > 0:
-        # TODO make a new image with red lines using verticalSeamMatMask, this will be in original height and width:
-        resized_image = add_k_seams(image, verticalSeamMatMask, -heightDiff)
-    if heightDiff < 0:
-        # TODO make a new image with red lines using verticalSeamMatMask, this will be in original height and width:
-        resized_image = remove_k_seams(image, verticalSeamMatMask, heightDiff)
+        markSeams(grayscaleMat, verticalSeamMatMask, gradientMat,
+                  forward_implementation, originalColMat, np.abs(heightDiff))
 
-    # TODO rotate the image, add/remove k seams horizontally, and rotate back
-    rotatedGrayScaleImage = rotate_image_counter_clockwise(grayscaleMat)
-    rotatedImage = rotate_image_counter_clockwise(image)
+        # TODO: create outImageWithVerticalSeams = copy(image) with red seams.
+
+        if heightDiff > 0:
+            # TODO: enlarge image, by duplicating all marked cells in verticalSeamMatMask
+            #  create a new matrix with 1 or 2. 2 means duplicate cell.
+            #  use np.reshape(np.repeat(image,newMask.flatten()),(height,out_width)) . FIX FOR IMAGE RGB
+            pass
+        if heightDiff < 0:
+            # TODO: shrink image by masking all marked cells in verticalSeamMatMask
+
+            # np.reshape(image[:,:,0][verticalSeamMatMask],(height,out_width))
+            image[:, :, 0] = np.reshape(image[:, :, 0][verticalSeamMatMask], (height, out_width))
+
+    # TODO rotate the image RGB three dimensions. something with image[:,:,0],image[:,:,1],image[:,:,2] maybe?
+    image = rotate_image_counter_clockwise(image)
+    # calculate new gradient and grayscale for the image
+    grayscaleMat = utils.to_grayscale(image)
+    gradientMat = utils.get_gradients(grayscaleMat)
+
+    # TODO: do it again with horizontalSeamMatMask
     if widthDiff != 0:
-        markSeams(rotatedGrayScaleImage, horizontalSeamMatMask, forward_implementation, originalRowMat)
-    if widthDiff > 0:
-        # TODO make a new image with Black lines using horizontalSeamMatMask,
-        #  this will be in new shrunk/enlarged width (after removing/adding vertical seams),
-        #  but in original height (before adding/removing horizontal seams).
-        resized_image = add_k_seams(rotatedImage, horizontalSeamMatMask, -widthDiff)
-        # Rotate back
-        resized_image = rotate_image_clockwise(resized_image)
-    if widthDiff < 0:
-        # TODO make a new image with Black lines using horizontalSeamMatMask,
-        #  this will be in new shrunk/enlarged width (after removing/adding vertical seams),
-        #  but in original height (before adding/removing horizontal seams).
-        resized_image = remove_k_seams(rotatedImage, horizontalSeamMatMask, -widthDiff)
-        # Rotate back
-        resized_image = rotate_image_clockwise(resized_image)
+        markSeams(grayscaleMat, horizontalSeamMatMask, gradientMat,
+                  forward_implementation, originalRowMat, np.abs(widthDiff))
+        if widthDiff > 0:
+            pass  # TODO
+        if widthDiff < 0:
+            pass  # TODO
 
     # TODO: return { 'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3}
     return outDict
 
 
-def remove_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int,
-                   VerticalSeamMatMask):
-    # TODO this function removes the best seam from the image, k times.
-    #  when deleting seams, we must delete one by one: i.e, calculate cost matrix, delete the seam, and calculate
-    #  cost matrix again....
-    currHeight, currWidth = image.shape
-    for i in range(-k):  # use range if you don't want to use tqdm
-        img = carve_column(image, forward_implementation, VerticalSeamMatMask)
-
-    # TODO: create new image using VerticalSeamMatMask
-    return img
-
-
-def add_k_seams(image: NDArray, out_height: int, out_width: int, forward_implementation: bool, k: int,
-                VerticalSeamMatMask):
-    # TODO this function duplicates the best seam from the image, k times.
-    # TODO  when adding seams, we must find all k best seams using the same cost matrix, and only then
-    #   #  duplicate them all once.
-
-    # TODO: use numpy.repeat
-    r, c = image.shape
-    for i in range(k):  # use range if you don't want to use tqdm
-        img = carve_column(image)
-    return img
-
-
-def carve_column(image: NDArray, forward_implementation: bool, VerticalSeamMatMask):
-    r, c = image.shape
-    # TODO: will not do grayscale here, we only need to do this once, not for every seam
-    M, backtrack = getCostMatrix(image, forward_implementation)
-
-    # Create a (r, c) matrix filled with the value True
-    # We'll be removing all pixels from the image which
-    # have False later
-    mask = np.ones((r, c), dtype=np.bool)
-
-    # Find the position of the smallest element in the
-    # last row of M
-    j = np.argmin(M[-1])
-
-    for i in reversed(range(r)):
-        # Mark the pixels for deletion
-        mask[i, j] = False
-        VerticalSeamMatMask[i, j] = False
-        j += backtrack[i, j] - 1
-    # Delete all the pixels marked False in the mask,
-    # and resize it to the new image dimensions
-    img = np.reshape(image[mask], (r, c - 1))
-
-    return img
-
-
-def getCostMatrix(grayscaleMat: NDArray, forward_implementation: bool) -> (NDArray, NDArray):
+def getCostMatrix(grayscaleMat: NDArray, gradientMat: NDArray, forward_implementation: bool) -> (NDArray, NDArray):
     """
 
+    :param gradientMat: Energy for each i,j
     :param grayscaleMat: a matrix of the image, in grayscale.
     :param forward_implementation: the calculation is different depending on the implementation
     :return: the completed cost matrix, and the backtracking matrix
@@ -186,13 +140,12 @@ def getCostMatrix(grayscaleMat: NDArray, forward_implementation: bool) -> (NDArr
     # calculate forward energy if needed (or just zeroes)
     if forward_implementation:
         # create three forward energy matrices for cl, cv, and cr
-        forwardCL, forwardCV, forwardCR = get_forward_energy_matrix(grayscaleMat, height, width)
+        forwardCL, forwardCV, forwardCR = get_forward_energy_matrix(grayscaleMat, width)
     else:
         # just zeroes
         forwardCR = forwardCV = forwardCL = np.zeros_like(grayscaleMat)
 
     # find cost matrix using gradients and forward energy by going row by row and getting minimums from prev row
-    gradientMat = utils.get_gradients(grayscaleMat)
     costMatrix = np.copy(gradientMat)
     backTrackingMat = np.zeros_like(grayscaleMat, dtype=int)
 
@@ -225,7 +178,7 @@ def getCostMatrix(grayscaleMat: NDArray, forward_implementation: bool) -> (NDArr
 
 
 # this function calculates Cv, Cr, and Cl for a given grayscale image
-def get_forward_energy_matrix(grayScaleMat: NDArray, height, width) -> \
+def get_forward_energy_matrix(grayScaleMat: NDArray, width) -> \
         (NDArray, NDArray, NDArray):
     forwardCV = np.empty_like(grayScaleMat)
     forwardCL = np.empty_like(grayScaleMat)
