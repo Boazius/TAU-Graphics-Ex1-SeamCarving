@@ -84,7 +84,7 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # save for each cell its original row and column.
     _, originalColMat = np.indices((height, width))
-
+    # for the rotated image, we will need something like this:
     _, originalRowMat = np.indices((out_width, height))
     # every cell will be TRUE or FALSE, coloured in RED or not this will be in original height and width:
     verticalSeamMatMask = np.ones_like(grayscaleMat, dtype=bool)
@@ -94,6 +94,7 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
     # @@@@@@@@@@@@@@@@@@@@@@  VERTICAL SEAMS  @@@@@@@@@@@@@@@@@@@@@@
     # Mark seams will update verticalSeamMatMask, will not change grayscaleMat, gradientMat, originalColMat
     outImageWithVerticalSeams = np.copy(image)
+
     if widthDiff != 0:
         markSeams(grayscaleMat, verticalSeamMatMask, gradientMat,
                   forward_implementation, originalColMat, np.abs(widthDiff))
@@ -117,17 +118,19 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
                                np.reshape(image[:, :, 2][verticalSeamMatMask], (height, out_width))))
             # showImage(newImage)
 
-    # rotate the image RGB
-    image = rotate_image_counter_clockwise(image)
-    # calculate new gradient and grayscale for the image - easier than rotating and reshaping
-    grayscaleMat = utils.to_grayscale(image)
-    gradientMat = utils.get_gradients(grayscaleMat)
-    # showImage(image)
+
 
     # @@@@@@@@@@@@@@@@@@@@@@  Horizontal SEAMS  @@@@@@@@@@@@@@@@@@@@@@
     # Mark seams will update horizontalSeamMatMask, will not change grayscaleMat, gradientMat, originalColMat
     outImageWithHorizontalSeams = np.copy(image)
+
     if heightDiff != 0:
+        # rotate the image RGB
+        image = rotate_image_counter_clockwise(image)
+        # calculate new gradient and grayscale for the image - easier than rotating and reshaping
+        grayscaleMat = utils.to_grayscale(image)
+        gradientMat = utils.get_gradients(grayscaleMat)
+        # showImage(image)
         markSeams(grayscaleMat, horizontalSeamMatMask, gradientMat,
                   forward_implementation, originalRowMat, np.abs(heightDiff))
         # add black lines to image
@@ -138,7 +141,7 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
         # showImage(outImageWithHorizontalSeams)
 
         if heightDiff > 0:
-            # enlarge image
+            # enlarge image - notice we switched width and height , because its rotated!
             repeatMat = np.invert(horizontalSeamMatMask) + 1
             image = np.dstack(
                 (np.reshape(np.repeat(image[:, :, 0], repeatMat.flatten()), (out_width, out_height)),
@@ -148,14 +151,14 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
             # showImage(image)
 
         if heightDiff < 0:
-            # shrink image
+            # shrink image  - notice we switched width and height , because its rotated!
             image = np.dstack((np.reshape(image[:, :, 0][horizontalSeamMatMask], (out_width, out_height)),
                                np.reshape(image[:, :, 1][horizontalSeamMatMask], (out_width, out_height)),
                                np.reshape(image[:, :, 2][horizontalSeamMatMask], (out_width, out_height))))
             # image = rotate_image_clockwise(image)
             # showImage(image)
 
-    image = rotate_image_clockwise(image)
+        image = rotate_image_clockwise(image)
 
     return {'resized': image, 'vertical_seams': outImageWithVerticalSeams,
             'horizontal_seams': outImageWithHorizontalSeams}
