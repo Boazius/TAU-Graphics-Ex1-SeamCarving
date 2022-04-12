@@ -1,4 +1,4 @@
-# A TAU graphics course exercise by Noga and Boaz.
+# A TAU graphics course exercise by Noga and Boaz. 311335046, 323274100
 # Deadline: 11/4/2022 (23:55)
 # Seam Carving
 # You are provided with a basic skeleton project which supports the following features:
