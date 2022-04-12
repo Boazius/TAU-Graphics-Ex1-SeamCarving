@@ -106,7 +106,7 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # TODO rotate the image RGB three dimensions. something with image[:,:,0],image[:,:,1],image[:,:,2] maybe?
     image = rotate_image_counter_clockwise(image)
-    # calculate new gradient and grayscale for the image
+    # calculate new gradient and grayscale for the image - easier than rotating and reshaping
     grayscaleMat = utils.to_grayscale(image)
     gradientMat = utils.get_gradients(grayscaleMat)
 
@@ -121,6 +121,11 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # TODO: return { 'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3}
     return outDict
+
+
+# TODO: gets an image, and puts rgb color on the seams as specified by seamMaskMat.
+def paintSeamsOnImage(image: NDArray, seamMaskMat: NDArray, rgbTuple):
+    pass
 
 
 def getCostMatrix(grayscaleMat: NDArray, gradientMat: NDArray, forward_implementation: bool) -> (NDArray, NDArray):
@@ -184,7 +189,7 @@ def get_forward_energy_matrix(grayScaleMat: NDArray, width) -> \
     forwardCL = np.empty_like(grayScaleMat)
     forwardCR = np.empty_like(grayScaleMat)
 
-    # TODO calculate cv,cr,and cl using np.add, np.roll, np.subtract, np.abs
+    # calculate cv,cr,and cl using np.add, np.roll, np.subtract, np.abs
     matRollJPlus1 = np.roll(grayScaleMat, axis=1, shift=-1)  # take j+1
     matRollJMinus1 = np.roll(grayScaleMat, axis=1, shift=1)  # take j-1
     matRollIMinus1 = np.roll(grayScaleMat, axis=0, shift=1)  # take i-1
