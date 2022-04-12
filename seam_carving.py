@@ -1,3 +1,6 @@
+# Authors - Boaz Yakubov and Noga Kinor,
+# 323274100 and
+
 from typing import Dict, Any
 
 import numpy as np
@@ -19,6 +22,7 @@ NDArray = Any
 #     plt.show()
 
 
+# This function marks True and False on verticalSeamMatMask, where the seams are.
 def markSeams(grayImage, seamMatMask, gradientMat, forward_implementation, originalColMat, k):
     """
     :param gradientMat: E(i,j) for each cell. ReadOnly
@@ -27,7 +31,6 @@ def markSeams(grayImage, seamMatMask, gradientMat, forward_implementation, origi
     :param forward_implementation: boolean, cost matrix calculation method
     :param originalColMat: for each cell saves which column it was before we shrunk it.
     :param k: how many seams to make
-    :return: This function marks True and False on verticalSeamMatMask, where the seams are.
     """
     # make copies of the matrices to not modify them, because we don't know if enlarge/shrink
     currGrayImage = np.copy(grayImage)
@@ -52,8 +55,6 @@ def markSeams(grayImage, seamMatMask, gradientMat, forward_implementation, origi
             seamMatMask[i, currOriginalColMat[i, j]] = False
             j += backTrackMat[i, j] - 1
 
-        # TODO: shrink grayImage,gradientMat,originalColMat according to mask.
-        #  img = np.reshape(image[mask], (r, c - 1))
         currGrayImage = np.reshape(currGrayImage[mask], (height, width - 1))
         currGradientMat = np.reshape(currGradientMat[mask], (height, width - 1))
         currOriginalColMat = np.reshape(currOriginalColMat[mask], (height, width - 1))
@@ -72,7 +73,6 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
             where img1 is the resized image and img2/img3 are the visualization images
             (where the chosen seams are colored red and black for vertical and horizontal seams, respectively).
     """
-
     # get width and height, and count how many seams to add/remove horizontally and vertically
     height, width, _ = image.shape
     heightDiff = out_height - height
@@ -96,9 +96,10 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
     outImageWithVerticalSeams = np.copy(image)
 
     if widthDiff != 0:
+        # Mark all seams on Matrix mask
         markSeams(grayscaleMat, verticalSeamMatMask, gradientMat,
                   forward_implementation, originalColMat, np.abs(widthDiff))
-        # add red lines to image
+        # add red lines to image rgb
         outImageWithVerticalSeams[:, :, 0] = np.where(verticalSeamMatMask, outImageWithVerticalSeams[:, :, 0], 255)
         outImageWithVerticalSeams[:, :, 1] = np.where(verticalSeamMatMask, outImageWithVerticalSeams[:, :, 1], 0)
         outImageWithVerticalSeams[:, :, 2] = np.where(verticalSeamMatMask, outImageWithVerticalSeams[:, :, 2], 0)
@@ -131,9 +132,10 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
         grayscaleMat = utils.to_grayscale(image)
         gradientMat = utils.get_gradients(grayscaleMat)
         # showImage(image)
+        # Mark all seams on Matrix mask
         markSeams(grayscaleMat, horizontalSeamMatMask, gradientMat,
                   forward_implementation, originalRowMat, np.abs(heightDiff))
-        # add black lines to image
+        # add black lines to image rgb
         outImageWithHorizontalSeams[:, :, 0] = np.where(horizontalSeamMatMask, outImageWithHorizontalSeams[:, :, 0], 0)
         outImageWithHorizontalSeams[:, :, 1] = np.where(horizontalSeamMatMask, outImageWithHorizontalSeams[:, :, 1], 0)
         outImageWithHorizontalSeams[:, :, 2] = np.where(horizontalSeamMatMask, outImageWithHorizontalSeams[:, :, 2], 0)
@@ -203,7 +205,7 @@ def getCostMatrix(grayscaleMat: NDArray, gradientMat: NDArray, forward_implement
         # find the minimum index (0 1 or 2 meaning left, up, or right ), and copy the value into costMatrix
         backTrackingMat[i] = np.argmin(possibleValueForCostMatrixRow, axis=0)
         # TODO: use the indexes from backTrackingMat to somehow select the correct values from three different arrays,
-        #  faster performance instead of doing minimum twice.
+        #  faster performance instead of doing minimum twice. THIS SLOWS IT DOWN SIGNIFICANTLY
         np.add(costMatrix[i], np.min(possibleValueForCostMatrixRow, axis=0), out=costMatrix[i])
 
         # edge cases - left edge j=0, right edge j = width-1
