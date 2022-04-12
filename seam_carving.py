@@ -5,6 +5,19 @@ import utils
 
 NDArray = Any
 
+# from PIL import Image
+# from matplotlib import pyplot as plt
+
+# def showImage(image):
+#     im = Image.fromarray(np.uint8(image))
+#     im.show()
+#
+#
+# def showMask(mask):
+#     binary = mask > 0
+#     plt.imshow(binary)
+#     plt.show()
+
 
 def markSeams(grayImage, seamMatMask, gradientMat, forward_implementation, originalColMat, k):
     """
@@ -62,10 +75,8 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # get width and height, and count how many seams to add/remove horizontally and vertically
     height, width, _ = image.shape
-    widthDiff = out_width - width
     heightDiff = out_height - height
-
-    # initialize useful matrices - MAYBE MAKE THIS GLOBAL?
+    widthDiff = out_width - width
 
     # saves the image converted to grayscale, WILL BE SHRANK AND ENLARGED
     grayscaleMat = utils.to_grayscale(image)
@@ -73,59 +84,81 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # save for each cell its original row and column.
     _, originalColMat = np.indices((height, width))
-    originalRowMat, _ = np.indices((height, out_width))
 
+    _, originalRowMat = np.indices((out_width, height))
     # every cell will be TRUE or FALSE, coloured in RED or not this will be in original height and width:
     verticalSeamMatMask = np.ones_like(grayscaleMat, dtype=bool)
     # every cell will be TRUE or FALSE, coloured in Black or not, original height, changed Width
-    horizontalSeamMatMask = np.ones((height, out_width), dtype=bool)
+    horizontalSeamMatMask = np.ones((out_width, height), dtype=bool)
 
-    # TODO Output dictionary will have resized image,red line vertical seams image , black line horizontal image
-    outDict = {}
-    # outResizedImage = np.copy(image)
-    # outImageWithVerticalSeams
-    # outImageWithHorizontalSeams
-
+    # @@@@@@@@@@@@@@@@@@@@@@  VERTICAL SEAMS  @@@@@@@@@@@@@@@@@@@@@@
     # Mark seams will update verticalSeamMatMask, will not change grayscaleMat, gradientMat, originalColMat
-    if heightDiff != 0:
+    outImageWithVerticalSeams = np.copy(image)
+    if widthDiff != 0:
         markSeams(grayscaleMat, verticalSeamMatMask, gradientMat,
-                  forward_implementation, originalColMat, np.abs(heightDiff))
+                  forward_implementation, originalColMat, np.abs(widthDiff))
+        # add red lines to image
+        outImageWithVerticalSeams[:, :, 0] = np.where(verticalSeamMatMask, outImageWithVerticalSeams[:, :, 0], 255)
+        outImageWithVerticalSeams[:, :, 1] = np.where(verticalSeamMatMask, outImageWithVerticalSeams[:, :, 1], 0)
+        outImageWithVerticalSeams[:, :, 2] = np.where(verticalSeamMatMask, outImageWithVerticalSeams[:, :, 2], 0)
 
-        # TODO: create outImageWithVerticalSeams = copy(image) with red seams.
+        if widthDiff > 0:
+            # enlarge image
+            repeatMat = np.invert(verticalSeamMatMask) + 1
+            image = np.dstack((np.reshape(np.repeat(image[:, :, 0], repeatMat.flatten()), (height, out_width)),
+                               np.reshape(np.repeat(image[:, :, 1], repeatMat.flatten()), (height, out_width)),
+                               np.reshape(np.repeat(image[:, :, 2], repeatMat.flatten()), (height, out_width))))
+            # showImage(newImage)
 
-        if heightDiff > 0:
-            # TODO: enlarge image, by duplicating all marked cells in verticalSeamMatMask
-            #  create a new matrix with 1 or 2. 2 means duplicate cell.
-            #  use np.reshape(np.repeat(image,newMask.flatten()),(height,out_width)) . FIX FOR IMAGE RGB
-            pass
-        if heightDiff < 0:
-            # TODO: shrink image by masking all marked cells in verticalSeamMatMask
+        if widthDiff < 0:
+            # shrink image
+            image = np.dstack((np.reshape(image[:, :, 0][verticalSeamMatMask], (height, out_width)),
+                               np.reshape(image[:, :, 1][verticalSeamMatMask], (height, out_width)),
+                               np.reshape(image[:, :, 2][verticalSeamMatMask], (height, out_width))))
+            # showImage(newImage)
 
-            # np.reshape(image[:,:,0][verticalSeamMatMask],(height,out_width))
-            image[:, :, 0] = np.reshape(image[:, :, 0][verticalSeamMatMask], (height, out_width))
-
-    # TODO rotate the image RGB three dimensions. something with image[:,:,0],image[:,:,1],image[:,:,2] maybe?
+    # rotate the image RGB
     image = rotate_image_counter_clockwise(image)
     # calculate new gradient and grayscale for the image - easier than rotating and reshaping
     grayscaleMat = utils.to_grayscale(image)
     gradientMat = utils.get_gradients(grayscaleMat)
+    # showImage(image)
 
-    # TODO: do it again with horizontalSeamMatMask
-    if widthDiff != 0:
+    # @@@@@@@@@@@@@@@@@@@@@@  Horizontal SEAMS  @@@@@@@@@@@@@@@@@@@@@@
+    # Mark seams will update horizontalSeamMatMask, will not change grayscaleMat, gradientMat, originalColMat
+    outImageWithHorizontalSeams = np.copy(image)
+    if heightDiff != 0:
         markSeams(grayscaleMat, horizontalSeamMatMask, gradientMat,
-                  forward_implementation, originalRowMat, np.abs(widthDiff))
-        if widthDiff > 0:
-            pass  # TODO
-        if widthDiff < 0:
-            pass  # TODO
+                  forward_implementation, originalRowMat, np.abs(heightDiff))
+        # add black lines to image
+        outImageWithHorizontalSeams[:, :, 0] = np.where(horizontalSeamMatMask, outImageWithHorizontalSeams[:, :, 0], 0)
+        outImageWithHorizontalSeams[:, :, 1] = np.where(horizontalSeamMatMask, outImageWithHorizontalSeams[:, :, 1], 0)
+        outImageWithHorizontalSeams[:, :, 2] = np.where(horizontalSeamMatMask, outImageWithHorizontalSeams[:, :, 2], 0)
+        outImageWithHorizontalSeams = rotate_image_clockwise(outImageWithHorizontalSeams)
+        # showImage(outImageWithHorizontalSeams)
 
-    # TODO: return { 'resized' : img1, 'vertical_seams' : img2 ,'horizontal_seams' : img3}
-    return outDict
+        if heightDiff > 0:
+            # enlarge image
+            repeatMat = np.invert(horizontalSeamMatMask) + 1
+            image = np.dstack(
+                (np.reshape(np.repeat(image[:, :, 0], repeatMat.flatten()), (out_width, out_height)),
+                 np.reshape(np.repeat(image[:, :, 1], repeatMat.flatten()), (out_width, out_height)),
+                 np.reshape(np.repeat(image[:, :, 2], repeatMat.flatten()), (out_width, out_height))))
+            # image = rotate_image_clockwise(image)
+            # showImage(image)
 
+        if heightDiff < 0:
+            # shrink image
+            image = np.dstack((np.reshape(image[:, :, 0][horizontalSeamMatMask], (out_width, out_height)),
+                               np.reshape(image[:, :, 1][horizontalSeamMatMask], (out_width, out_height)),
+                               np.reshape(image[:, :, 2][horizontalSeamMatMask], (out_width, out_height))))
+            # image = rotate_image_clockwise(image)
+            # showImage(image)
 
-# TODO: gets an image, and puts rgb color on the seams as specified by seamMaskMat.
-def paintSeamsOnImage(image: NDArray, seamMaskMat: NDArray, rgbTuple):
-    pass
+    image = rotate_image_clockwise(image)
+
+    return {'resized': image, 'vertical_seams': outImageWithVerticalSeams,
+            'horizontal_seams': outImageWithHorizontalSeams}
 
 
 def getCostMatrix(grayscaleMat: NDArray, gradientMat: NDArray, forward_implementation: bool) -> (NDArray, NDArray):
@@ -231,12 +264,10 @@ def get_forward_energy_matrix(grayScaleMat: NDArray, width) -> \
 
 
 # function to rotate image 90 degrees clockwise
-# TODO: handle the grayscale case and the image RGB case.
-def rotate_image_clockwise(image: NDArray):
-    return np.rot90(image, -1, (0, 1))
+def rotate_image_counter_clockwise(image: NDArray):
+    return np.rot90(image, -1, (1, 0))
 
 
 # function to rotate image 90 degrees counter clockwise
-# TODO: handle the grayscale case and the image RGB case.
-def rotate_image_counter_clockwise(image: NDArray):
+def rotate_image_clockwise(image: NDArray):
     return np.rot90(image, 3, (0, 1))

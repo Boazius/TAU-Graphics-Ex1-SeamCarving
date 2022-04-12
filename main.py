@@ -52,7 +52,6 @@ def main(args):
     # --width 900 --resize_method "seam_carving" --output_prefix "my_prefix" --use_forward_implementation
 
     image = utils.open_image(args.image_path)
-
     # output is dictionary with:
     # 0 Resized image with the specified output dimension
     # if seam carving method is chosen, also output:
