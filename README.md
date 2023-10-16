@@ -52,8 +52,9 @@ For example, for an image like this (1920x1080):
 
 if we wanted to resize it to 1500x1100 , we must find the "unimportant" areas - horizontal marked in black and vertical marked in red:
 
-<img src="images\cameltime_horizontal_seams.png" alt="alt_text" style="width:50%" />
 <img src="images\cameltime_vertical_seams.png" alt="alt_text" style="width:50%" />
+
+<img src="images\cameltime_horizontal_seams.png" alt="alt_text" style="width:50%" />
 
 and then delete these unimportant areas in the image to get the final resized image
 

@@ -7,6 +7,21 @@ import utils
 
 NDArray = Any
 
+# TODO delete later:
+from PIL import Image
+from matplotlib import pyplot as plt
+
+def showImage(image):
+    im = Image.fromarray(np.uint8(image))
+    im.show()
+
+
+def showMask(mask):
+    binary = mask > 0
+    plt.imshow(binary)
+    plt.show()
+
+
 # function to rotate image 90 degrees clockwise
 def rotate_image_counter_clockwise(image: NDArray):
     return np.rot90(image, -1, (1, 0))
@@ -120,11 +135,11 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # @@@@@@@@@@@@@@@@@@@@@@  Horizontal SEAMS  @@@@@@@@@@@@@@@@@@@@@@
     # Mark seams will update horizontalSeamMatMask, will not change grayscaleMat, gradientMat, originalColMat
-    outImageWithHorizontalSeams = np.copy(image)
 
     if heightDiff != 0:
         # rotate the image RGB
         image = rotate_image_counter_clockwise(image)
+        outImageWithHorizontalSeams = np.copy(image)
         # calculate new gradient and grayscale for the image - easier than rotating and reshaping
         grayscaleMat = utils.to_grayscale(image)
         gradientMat = utils.get_gradients(grayscaleMat)
