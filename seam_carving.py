@@ -2,59 +2,71 @@
 # 323274100 and 311335046
 
 from typing import Dict, Any
-
 import numpy as np
 import utils
 
 NDArray = Any
 
-# from PIL import Image
-# from matplotlib import pyplot as plt
+# TODO delete later:
+from PIL import Image
+from matplotlib import pyplot as plt
 
-# def showImage(image):
-#     im = Image.fromarray(np.uint8(image))
-#     im.show()
-#
-#
-# def showMask(mask):
-#     binary = mask > 0
-#     plt.imshow(binary)
-#     plt.show()
+def showImage(image):
+    im = Image.fromarray(np.uint8(image))
+    im.show()
 
+
+def showMask(mask):
+    binary = mask > 0
+    plt.imshow(binary)
+    plt.show()
+
+
+# function to rotate image 90 degrees clockwise
+def rotate_image_counter_clockwise(image: NDArray):
+    return np.rot90(image, -1, (1, 0))
+
+# function to rotate image 90 degrees counter clockwise
+def rotate_image_clockwise(image: NDArray):
+    return np.rot90(image, 3, (0, 1))
 
 # This function marks True and False on verticalSeamMatMask, where the seams are.
 def markSeams(grayImage, seamMatMask, gradientMat, forward_implementation, originalColMat, k):
     """
-    :param gradientMat: E(i,j) for each cell. ReadOnly
-    :param grayImage: the image in grayscale. ReadOnly
-    :param seamMatMask: Write/Read
-    :param forward_implementation: boolean, cost matrix calculation method
-    :param originalColMat: for each cell saves which column it was before we shrunk it.
-    :param k: how many seams to make
+    Marks the locations of seams on the verticalSeamMatMask by modifying it with True and False values.
+
+    :param grayImage: numpy array, the input image in grayscale. Read-only.
+    :param seamMatMask: numpy array, a matrix used to mark the seams. Read/Write.
+    :param gradientMat: numpy array, containing the energy values (E(i,j)) for each cell. Read-only.
+    :param forward_implementation: boolean, indicating the method of cost matrix calculation.
+    :param originalColMat: numpy array, keeping track for each cell which original columns it was before shrinking. Read-only.
+    :param k: int, specifying the number of seams to be marked.
     """
-    # make copies of the matrices to not modify them, because we don't know if enlarge/shrink
+
+    # Make copies of the input matrices to avoid modifying the original data
     currGrayImage = np.copy(grayImage)
     currGradientMat = np.copy(gradientMat)
     currOriginalColMat = np.copy(originalColMat)
 
-    # delete and Mark k seams
+    # Delete and Mark k seams
     for seamIdx in range(k):
-        # get cost matrix
+        # Obtain the cost matrix for the current iteration
         height, width = currGrayImage.shape
         costMatrix, backTrackMat = getCostMatrix(currGrayImage, currGradientMat, forward_implementation)
 
-        # for deleting seam, mark ONLY the seam on the matrix with False.
-        mask = np.ones((height, width), dtype=np.bool)
+        # Create a mask to mark the seam on the matrix with False
+        mask = np.ones((height, width), dtype=bool)
 
-        # Find the position of the smallest element in the last row of M
+        # Find the position of the smallest element in the last row of the cost matrix
         j = np.argmin(costMatrix[-1])
 
+        # Mark the pixels for deletion
         for i in reversed(range(height)):
-            # Mark the pixels for deletion
             mask[i, j] = False
             seamMatMask[i, currOriginalColMat[i, j]] = False
             j += backTrackMat[i, j] - 1
 
+        # Update the matrices based on the mask
         currGrayImage = np.reshape(currGrayImage[mask], (height, width - 1))
         currGradientMat = np.reshape(currGradientMat[mask], (height, width - 1))
         currOriginalColMat = np.reshape(currOriginalColMat[mask], (height, width - 1))
@@ -123,11 +135,11 @@ def resize(image: NDArray, out_height: int, out_width: int, forward_implementati
 
     # @@@@@@@@@@@@@@@@@@@@@@  Horizontal SEAMS  @@@@@@@@@@@@@@@@@@@@@@
     # Mark seams will update horizontalSeamMatMask, will not change grayscaleMat, gradientMat, originalColMat
-    outImageWithHorizontalSeams = np.copy(image)
 
     if heightDiff != 0:
         # rotate the image RGB
         image = rotate_image_counter_clockwise(image)
+        outImageWithHorizontalSeams = np.copy(image)
         # calculate new gradient and grayscale for the image - easier than rotating and reshaping
         grayscaleMat = utils.to_grayscale(image)
         gradientMat = utils.get_gradients(grayscaleMat)
@@ -267,12 +279,3 @@ def get_forward_energy_matrix(grayScaleMat: NDArray, width) -> \
 
     return forwardCL, forwardCV, forwardCR
 
-
-# function to rotate image 90 degrees clockwise
-def rotate_image_counter_clockwise(image: NDArray):
-    return np.rot90(image, -1, (1, 0))
-
-
-# function to rotate image 90 degrees counter clockwise
-def rotate_image_clockwise(image: NDArray):
-    return np.rot90(image, 3, (0, 1))

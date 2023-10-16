@@ -10,7 +10,6 @@ Options = Any
 
 def open_image(image_path: str):
     """
-
     :param image_path: the path of the input image
     :return: NDArray that represent the image. The dtype is set to float32.
     """
