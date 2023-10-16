@@ -48,16 +48,16 @@ Content-aware image resizing changes the image resolution while maintaining the 
 
 For example, for an image like this (1920x1080): 
 
-<img src="imagesInput\camel.jpg" alt="alt_text" style="width:50%" />
+<img src="images\camel.jpg" alt="alt_text" style="width:50%" />
 
 if we wanted to resize it to 1500x1100 , we must find the "unimportant" areas - horizontal marked in black and vertical marked in red:
 
-<img src="imagesOutput\cameltime_horizontal_seams.png" alt="alt_text" style="width:50%" />
-<img src="imagesOutput\cameltime_vertical_seams.png" alt="alt_text" style="width:50%" />
+<img src="images\cameltime_horizontal_seams.png" alt="alt_text" style="width:50%" />
+<img src="images\cameltime_vertical_seams.png" alt="alt_text" style="width:50%" />
 
 and then delete these unimportant areas in the image to get the final resized image
 
-<img src="imagesOutput\cameltime_resized.png" alt="alt_text" style="width:50%" />
+<img src="images\cameltime_resized.png" alt="alt_text" style="width:50%" />
 
 Note that the camels were not resized at all! only the background sky and desert was shrunk.
 
@@ -89,7 +89,6 @@ to find the optimal "Seams" to remove or duplicate , i.e the lines along the ima
     - find a path with the lowest total energy from one end of the image to the other.
     - delete or duplicate it
 
-
 to resize the image both horizontally and vertically, we first change the width using the algorith and then the height on the partially resized image.
 
 ### Forward Looking energy function
@@ -109,13 +108,36 @@ $C_V = |I_gs(i,j+1)-I_gs(i,j-1)|$
 
 $C_R = |I_gs(i,j+1)-I_gs(i,j-1)|+|I_gs(i-1,j)-I_gs(i,j+1)|$
 
-when using the program, you can choose to use the previous energy function, or this forward looking energy function.
+_when using the program, you can choose to use the previous energy function, or this forward looking energy function_
 
 <!-- GETTING STARTED -->
 ## Getting Started
-<!-- TODO -->
-This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
+- clone or download the repository
+- open shell in the repository folder
+- verify python and pip are installed ( use ``` python --version ``` and ```pip --version```)
+- install requirements using  ``` pip install -r requirements.txt ```
+- copy your desired images(s) into the folder, preferably into the imagesInput folder
+
+now, to run the application simply type:
+``` bash
+python main.py
+```
+
+with the following arguments
+- image_path (str) - an absolute / relative path to the image you want to process
+- output_dir (str)– The output directory where you will save your outputs.
+- height (int) – the output image height
+- width (int) – the output image width
+- resize_method (str) – a string representing the resize method. Could be one of the following: [‘nearest_neighbor’,‘seam_carving’]
+- use_forward_implementation – a boolean flag indicates if forward looking energy function is used or not.
+- output_prefix (str) – an optional string which will be used as a prefix to the output files. If set, the output files names will start with the given prefix. For seam carving, we will output two images, the resized image, and visualization of the chosen seems. So if --output_prefix is set to “my_prefix” then the output will be my_prefix_resized.png and my_prefix_horizontal _seams.png, my_prefix_vertical_seams.png. If the prefix is not set, then we will chose “img” as a default prefix.
+
+so for example
+``` bash
+python main.py --image_path "imagesInput/tower.png" --output_dir "imagesOutput/" --height 900 --width 900 --resize_method "seam_carving" --output_prefix "my_prefix" --use_forward_implementation
+```
+will run the seam carving algorithm on tower.png and output my_prefix_tower.png
 
 ### Prerequisites
 <!-- TODO -->
@@ -144,15 +166,6 @@ This is an example of how to list things you need to use the software and how to
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
-
-<!-- USAGE EXAMPLES -->
-## Usage
-<!-- TODO -->
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://example.com)_
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
