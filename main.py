@@ -1,23 +1,8 @@
 # A TAU graphics course exercise by Noga and Boaz. 311335046, 323274100
-# Deadline: 11/4/2022 (23:55)
-# Seam Carving
-# You are provided with a basic skeleton project which supports the following features:
-# • It resizes an input image using simple nearest-neighbor interpolation
-# • It outputs the image gradients
-# You need to extend the provided project and support the following features:
-# • Image resizing via basic seam carving algorithm with a given energy function
-# • Image resizing via seam carving algorithm with forward energy looking energy function
-# Your program should output the following:
-# • Resized image with the specified output dimension
-# • If seam carving method is chosen, you will also output visualization images with the
-# chosen seams colored in red and black for horizontal and vertical seams, respectively.
-
 import argparse
-
 import nearest_neighbor
 import seam_carving
 import utils
-
 
 def get_args():
     """A Helper function that defines the program arguments."""
@@ -42,32 +27,31 @@ def get_args():
 def main(args):
     """
     The program main function.
-    :param args: the command-line input arguments.
+    :param args: the command-line input arguments - 
+    image_path, output_dir, height, width, resize_method, use_forward_implementation, output_prefix
     """
-    # NEAREST NEIGHBOR: --image_path "imagesInput/tower.png" --output_dir "imagesOutput/" --height 900
-    # --width 900 --resize_method "nearest_neighbor" --output_prefix "my_prefix"
-    # SEAM CARVING: --image_path "imagesInput/tower.png" --output_dir "imagesOutput/" --height 900
-    # --width 900 --resize_method "seam_carving" --output_prefix "my_prefix"
-    # SEAM WITH FORWARD ENERGY: --image_path "imagesInput/tower.png" --output_dir "imagesOutput/" --height 900
-    # --width 900 --resize_method "seam_carving" --output_prefix "my_prefix" --use_forward_implementation
-
-    image = utils.open_image(args.image_path)
+    output = None
     # output is dictionary with:
-    # 0 Resized image with the specified output dimension
-    # if seam carving method is chosen, also output:
-    #   1: visualization image with the chosen seams colored in red for horizontal seams
-    #   2: visualization image with the chosen seams colored in black for vertical seams
+        # 0 Resized image with the specified output dimension (height, width)
+        # if seam carving method is chosen, also output:
+        #   1: visualization image with the chosen seams colored in red for horizontal seams
+        #   2: visualization image with the chosen seams colored in black for vertical seams
+     
+    image = utils.open_image(args.image_path)
 
+    # uses a simple nearest neighbor interpolation for resizing, defined in nearest_neighbor.py
     if args.resize_method == 'nearest_neighbor':
         output = nearest_neighbor.resize(image, args.height, args.width)
+        # output the resized image, the horizontal seams in red, the vertical seams in black:
         utils.save_images(output, args.output_dir, args.output_prefix)
-
+    
+    # uses seam carving for resizing, defined in seam_carving
     elif args.resize_method == 'seam_carving':
         output = seam_carving.resize(image, args.height, args.width,
                                      forward_implementation=args.use_forward_implementation)
         # output the resized image, the horizontal seams in red, the vertical seams in black:
         utils.save_images(output, args.output_dir, args.output_prefix)
-
+        
     else:
         raise ValueError(f'Resize method {args.resize_method} is not supported')
 
