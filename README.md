@@ -41,7 +41,6 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-<!-- Fill the about section here TODO -->
 Exercise 1,  As part of the ["Fundamentals of Computer Graphics, Vision and Image Processing"](https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0368323601&year=2022) course in Tel aviv university (2022). <br>
 Made by [Boaz Yakubov](https://github.com/Boazius/) and [Noga Kinor](https://github.com/nogakinor)
 
@@ -60,6 +59,7 @@ and then delete these unimportant areas in the image to get the final resized im
 
 <img src="imagesOutput\cameltime_resized.png" alt="alt_text" style="width:50%" />
 
+Note that the camels were not resized at all! only the background sky and desert was shrunk.
 
 #### _in order to enlarge the image using this technique, we would simply duplicate these lines instead_
 
@@ -68,10 +68,48 @@ and then delete these unimportant areas in the image to get the final resized im
 - the original image with horizontal black lines (that will be deleted or duplicated)
 - the _the partially resized_ image with vertical red lines (that will be deleted or duplicated)
 
+#### The program optionally uses a "forward looking energy function" instead of the regular energy function, in order to reduce artifacts in the resized image
 
 ### Built With 
 [![Python][Python-shield]][Python-url]
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Mathematical Background
+
+In order to implement the Seam carving algorithm, we need to define an energy function that specifies the "importance" of each image pixel. we can calculate the pixel importance using the image gradient.
+
+We computed it using the formula 
+$E(i,j) =  \sqrt{\frac{{(\Delta_x)^2 + (\Delta_y)^2}}{2}} $
+where $\Delta_x^2$ is the squared difference between the current and next horizontal pixel (in grayscale) and $\Delta_y^2$ is the same for vertical pixels
+
+to find the optimal "Seams" to remove or duplicate , i.e the lines along the image:
+
+- calculate the cost matrix M
+- do k times:
+    - find a path with the lowest total energy from one end of the image to the other.
+    - delete or duplicate it
+
+
+to resize the image both horizontally and vertically, we first change the width using the algorith and then the height on the partially resized image.
+
+### Forward Looking energy function
+Seam carving can introduce artifacts to the resized images. to reduce these artifacts, we implement a forward-looking energy function:
+
+$M(i,j) = E(i,j) + \min\begin{cases}
+M(i-1,j-1)+C_L(i,j), \\
+M(i-1,j)+C_V(i,j) \\
+M(i-1,j+1) + C_R(i,j)
+\end{cases} $
+
+where ($I_gs$ is the grayscale image) 
+
+$C_L = |I_gs(i,j+1)-I_gs(i,j-1)|+|I_gs(i-1,j)-I_gs(i,j-1)|$
+
+$C_V = |I_gs(i,j+1)-I_gs(i,j-1)|$
+
+$C_R = |I_gs(i,j+1)-I_gs(i,j-1)|+|I_gs(i-1,j)-I_gs(i,j+1)|$
+
+when using the program, you can choose to use the previous energy function, or this forward looking energy function.
 
 <!-- GETTING STARTED -->
 ## Getting Started
