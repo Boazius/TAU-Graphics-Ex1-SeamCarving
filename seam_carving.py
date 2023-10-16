@@ -44,7 +44,7 @@ def markSeams(grayImage, seamMatMask, gradientMat, forward_implementation, origi
         costMatrix, backTrackMat = getCostMatrix(currGrayImage, currGradientMat, forward_implementation)
 
         # for deleting seam, mark ONLY the seam on the matrix with False.
-        mask = np.ones((height, width), dtype=np.bool)
+        mask = np.ones((height, width), dtype=bool)
 
         # Find the position of the smallest element in the last row of M
         j = np.argmin(costMatrix[-1])
