@@ -115,7 +115,7 @@ _when using the program, you can choose to use the previous energy function, or 
 
 <!-- GETTING STARTED -->
 ## Getting Started
-To get a local copy up and running follow these simple example steps.
+To get a local copy up and running follow these simple steps.
 - clone or download the repository
 - open shell in the repository folder
 - verify python and pip are installed ( use ``` python --version ``` and ```pip --version```)
